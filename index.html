@@ -1,0 +1,1210 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RAG Security Review</title>
+<meta name="description" content="Security Risks of Retrieval-Augmented Generation Systems and Their Mitigation: A Literature and Market Review — Alasgarov, Aghazada, Gulmammadov, Baku Higher Oil School.">
+<style>
+:root{
+  --bg:#F7F6F2; --surface:#FFFFFF; --surface-2:#EFEDE6; --border:#DEDAD0;
+  --text:#2B2B2B; --muted:#5A5A57; --accent:#355878; --accent-soft:#E3EAF1; --accent-strong:#28455F;
+  --warn:#8A5418; --warn-soft:#F5E8D4; --warn-line:#C98F4A;
+  --good:#2F6650; --good-soft:#E2EFE8;
+  --shadow:0 1px 2px rgba(40,35,25,.06),0 4px 14px rgba(40,35,25,.06);
+  --radius:14px; --maxw:1120px; --measure:70ch;
+  --node-idx:#ECEAE3; --node-ans:#FFFFFF; --node-stroke:#8C8A82; --marker:#2B2B2B; --marker-text:#FFFFFF;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#1D2024; --surface:#262A2F; --surface-2:#2E3238; --border:#3B4047;
+    --text:#E5E3DD; --muted:#B4B1A9; --accent:#93B6D6; --accent-soft:#2D3B49; --accent-strong:#B5CFE6;
+    --warn:#E3B47E; --warn-soft:#3D3226; --warn-line:#B98A55;
+    --good:#8FCBB0; --good-soft:#26372F;
+    --shadow:0 1px 2px rgba(0,0,0,.25),0 4px 14px rgba(0,0,0,.2);
+    --node-idx:#30353B; --node-ans:#262A2F; --node-stroke:#7E848C; --marker:#E5E3DD; --marker-text:#1D2024;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#1D2024; --surface:#262A2F; --surface-2:#2E3238; --border:#3B4047;
+  --text:#E5E3DD; --muted:#B4B1A9; --accent:#93B6D6; --accent-soft:#2D3B49; --accent-strong:#B5CFE6;
+  --warn:#E3B47E; --warn-soft:#3D3226; --warn-line:#B98A55;
+  --good:#8FCBB0; --good-soft:#26372F;
+  --shadow:0 1px 2px rgba(0,0,0,.25),0 4px 14px rgba(0,0,0,.2);
+  --node-idx:#30353B; --node-ans:#262A2F; --node-stroke:#7E848C; --marker:#E5E3DD; --marker-text:#1D2024;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:72px;-webkit-text-size-adjust:100%}
+@media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}*{transition:none!important;animation:none!important}}
+body{margin:0;background:var(--bg);color:var(--text);
+  font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans",sans-serif;
+  font-size:17px;line-height:1.6;}
+@media (min-width:900px){body{font-size:18px}}
+a{color:var(--accent)}
+a:hover{color:var(--accent-strong)}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px;border-radius:4px}
+.skip{position:absolute;left:-999px;top:0;background:var(--surface);padding:8px 12px;z-index:100}
+.skip:focus{left:8px;top:8px}
+h1,h2,h3,h4{line-height:1.25;margin:0 0 .5em;font-weight:650;letter-spacing:-.01em}
+h2{font-size:clamp(1.55rem,1.2rem + 1.3vw,2.1rem)}
+h3{font-size:1.18rem}
+p{margin:0 0 1em}
+.wrap{max-width:var(--maxw);margin:0 auto;padding:0 16px}
+@media (min-width:700px){.wrap{padding:0 28px}}
+.prose{max-width:var(--measure)}
+.muted{color:var(--muted)}
+.small{font-size:.9em}
+.ref{text-decoration:none;font-size:.86em;white-space:nowrap}
+.ref:hover{text-decoration:underline}
+
+/* nav */
+header.top{position:sticky;top:0;z-index:50;background:color-mix(in srgb,var(--bg) 92%,transparent);
+  backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);border-bottom:1px solid var(--border)}
+.top .wrap{display:flex;align-items:center;gap:12px;height:58px}
+.brand{font-weight:700;text-decoration:none;color:var(--text);white-space:nowrap;font-size:.95rem}
+.brand span{color:var(--accent)}
+nav.sections{flex:1;overflow-x:auto;scrollbar-width:none;-webkit-mask-image:linear-gradient(90deg,transparent 0,#000 12px,#000 calc(100% - 16px),transparent)}
+nav.sections::-webkit-scrollbar{display:none}
+nav.sections ul{list-style:none;margin:0;padding:0 12px;display:flex;gap:2px;white-space:nowrap}
+nav.sections a{display:block;padding:6px 10px;border-radius:8px;text-decoration:none;color:var(--muted);font-size:.88rem}
+nav.sections a:hover{background:var(--surface-2);color:var(--text)}
+nav.sections a.active{background:var(--accent-soft);color:var(--accent-strong);font-weight:600}
+.theme-btn{flex:none;border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:999px;
+  height:36px;padding:0 12px;display:flex;align-items:center;gap:6px;cursor:pointer;font:inherit;font-size:.85rem}
+.theme-btn svg{width:18px;height:18px}
+
+/* sections */
+section{padding:72px 0;border-bottom:1px solid var(--border)}
+section:nth-of-type(even){background:color-mix(in srgb,var(--surface-2) 45%,var(--bg))}
+.eyebrow{display:inline-block;font-size:.8rem;font-weight:650;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);margin-bottom:.6em}
+.lead{font-size:1.1em;color:var(--muted);max-width:var(--measure)}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:22px}
+.grid{display:grid;gap:18px}
+@media (min-width:700px){.g2{grid-template-columns:repeat(2,1fr)}.g3{grid-template-columns:repeat(3,1fr)}}
+@media (min-width:1000px){.g3l{grid-template-columns:repeat(3,1fr)}}
+@media (min-width:700px) and (max-width:999px){.g3l{grid-template-columns:repeat(2,1fr)}}
+figure{margin:0}
+figcaption{font-size:.88em;color:var(--muted);margin-top:10px;max-width:var(--measure)}
+.note{border-left:4px solid var(--accent);background:var(--accent-soft);padding:12px 16px;border-radius:0 10px 10px 0;max-width:var(--measure);margin:1.2em 0}
+.note.warn{border-color:var(--warn-line);background:var(--warn-soft)}
+blockquote{margin:1em 0;padding:4px 0 4px 16px;border-left:3px solid var(--border);color:var(--muted);font-style:italic;max-width:var(--measure)}
+
+/* hero */
+.hero{padding:64px 0 56px;background:var(--bg)}
+.hero h1{font-size:clamp(1.8rem,1.2rem + 2.6vw,3rem);max-width:24ch;margin-bottom:.4em}
+.hero .sub{font-size:1.05em;color:var(--muted);margin-bottom:1.4em}
+.authors{display:flex;flex-wrap:wrap;gap:6px 18px;font-weight:600}
+.affil{color:var(--muted);margin:.2em 0 1.6em}
+.rq{background:var(--surface);border:1px solid var(--border);border-left:5px solid var(--accent);border-radius:12px;padding:16px 20px;max-width:var(--measure);box-shadow:var(--shadow);margin-bottom:28px}
+.rq b{display:block;font-size:.78rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-bottom:4px}
+.rq p{margin:0;font-size:1.12em}
+.stat{display:flex;flex-direction:column;gap:6px}
+.stat .num{font-size:clamp(2.2rem,1.6rem + 2vw,3rem);font-weight:700;line-height:1;color:var(--accent-strong);font-variant-numeric:tabular-nums}
+.stat .num small{font-size:.45em;font-weight:600;color:var(--muted);margin-left:4px}
+.stat .lbl{font-weight:600}
+.stat .det{font-size:.9em;color:var(--muted)}
+.stat.warn .num{color:var(--warn)}
+.meta-row{display:flex;flex-wrap:wrap;gap:10px;margin-top:22px}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:999px;background:var(--surface);border:1px solid var(--border);font-size:.85rem;color:var(--muted)}
+
+/* badges */
+.badge{display:inline-flex;align-items:center;gap:6px;font-size:.78rem;font-weight:650;padding:3px 10px;border-radius:999px;white-space:nowrap}
+.badge.research{background:var(--accent-soft);color:var(--accent-strong)}
+.badge.deployed{background:var(--warn-soft);color:var(--warn)}
+.badge::before{content:"";width:8px;height:8px;border-radius:50%;background:currentColor}
+.ap{display:inline-flex;align-items:center;justify-content:center;min-width:2.1em;height:1.7em;padding:0 6px;border-radius:999px;background:var(--marker);color:var(--marker-text);font-weight:700;font-size:.78rem}
+.lp{display:inline-flex;align-items:center;justify-content:center;min-width:2.1em;height:1.7em;padding:0 6px;border-radius:6px;background:var(--accent);color:var(--bg);font-weight:700;font-size:.78rem}
+
+/* RAG idea */
+.svgbox{width:100%;overflow:hidden}
+.svgbox svg{display:block;width:100%;height:auto}
+svg text{font-family:inherit;fill:var(--text)}
+svg .muted-t{fill:var(--muted)}
+.flow3{display:grid;gap:14px;align-items:stretch}
+@media (min-width:1000px){.flow3{grid-template-columns:1fr auto 1fr auto 1fr}}
+.flow-step{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow);display:flex;gap:14px;align-items:flex-start}
+.flow-step svg{flex:none;width:52px;height:52px}
+.flow-step h3{margin-bottom:.25em}
+.flow-step p{margin:0;font-size:.93em;color:var(--muted)}
+.flow-arrow{display:flex;align-items:center;justify-content:center;color:var(--muted)}
+.flow-arrow svg{width:32px;height:32px}
+@media (max-width:999px){.flow-arrow svg{transform:rotate(90deg)}}
+
+/* pipeline */
+.pipe-layout{display:grid;gap:22px;align-items:start}
+@media (min-width:1000px){.pipe-layout{grid-template-columns:minmax(0,1.9fr) minmax(0,1fr)}}
+#pipeline .node rect{stroke:var(--node-stroke);stroke-width:1.5}
+#pipeline .node.idx rect{fill:var(--node-idx)}
+#pipeline .node.ans rect{fill:var(--node-ans)}
+#pipeline .node.hl rect{stroke:var(--warn-line);stroke-width:3}
+#pipeline .edge{stroke:var(--text);stroke-width:1.6;fill:none}
+#pipeline .tb{stroke:var(--text);stroke-width:1.6;stroke-dasharray:5 5}
+#pipeline .marker{cursor:pointer}
+#pipeline .marker circle.m{fill:var(--marker)}
+#pipeline .marker text{fill:var(--marker-text);font-weight:700;font-size:14px;pointer-events:none}
+#pipeline .marker circle.halo{fill:none;stroke:var(--warn-line);stroke-width:0}
+#pipeline .marker:hover circle.halo,#pipeline .marker.on circle.halo{stroke-width:4}
+#pipeline .marker:focus{outline:none}
+#pipeline .marker:focus-visible circle.halo{stroke:var(--accent);stroke-width:4}
+.ap-buttons{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.ap-buttons button{font:inherit;font-size:.86rem;border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:999px;padding:5px 12px;cursor:pointer}
+.ap-buttons button[aria-pressed="true"]{background:var(--marker);color:var(--marker-text);border-color:var(--marker)}
+.info{min-height:260px}
+.info h3{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.info dl{margin:12px 0 0;display:grid;gap:10px}
+.info dt{font-size:.78rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:650}
+.info dd{margin:0}
+.legend{display:flex;flex-wrap:wrap;gap:8px 20px;font-size:.88em;color:var(--muted);margin-top:10px}
+.legend span{display:inline-flex;align-items:center;gap:8px}
+
+/* risk cards */
+.risk{display:flex;flex-direction:column;gap:10px}
+.risk-head{display:flex;align-items:center;gap:12px}
+.risk-head svg{width:40px;height:40px;flex:none;color:var(--accent)}
+.risk.dep .risk-head svg{color:var(--warn)}
+.risk h3{margin:0;font-size:1.08rem}
+.keynum{background:var(--surface-2);border-radius:10px;padding:10px 14px}
+.keynum b{display:block;font-size:1.45rem;line-height:1.2;color:var(--accent-strong)}
+.risk.dep .keynum b{color:var(--warn)}
+.keynum span{font-size:.88em;color:var(--muted)}
+.risk p{margin:0;font-size:.95em}
+.risk .fw{font-size:.82em;color:var(--muted)}
+.class-bar{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin:8px 0 26px}
+
+/* timeline */
+.tl{list-style:none;margin:0;padding:0;position:relative}
+.tl::before{content:"";position:absolute;left:15px;top:6px;bottom:6px;width:2px;background:var(--border)}
+.tl li{position:relative;padding-left:48px;margin-bottom:22px}
+.tl .dot{position:absolute;left:5px;top:22px;width:22px;height:22px;border-radius:50%;background:var(--surface);border:4px solid var(--accent)}
+.tl li.a5 .dot{border-color:var(--warn-line)}
+.tl .yr{position:relative;padding-left:48px;font-weight:700;color:var(--muted);margin:6px 0 14px;font-size:.95rem;letter-spacing:.05em}
+.tl .yr::before{content:"";position:absolute;left:9px;top:50%;width:14px;height:14px;margin-top:-7px;background:var(--muted);border-radius:3px;transform:rotate(45deg)}
+.inc h3{margin:0 0 .2em}
+.inc .when{font-size:.86em;color:var(--muted);margin-bottom:8px}
+.inc .pts{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.inc p{font-size:.95em}
+.ctrl{display:flex;gap:10px;background:var(--good-soft);border-radius:10px;padding:10px 14px;font-size:.92em;margin-top:4px}
+.ctrl svg{flex:none;width:20px;height:20px;color:var(--good);margin-top:3px}
+.ctrl b{color:var(--good)}
+.inc-layout{display:grid;gap:28px}
+@media (min-width:1000px){.inc-layout{grid-template-columns:minmax(0,1.25fr) minmax(0,1fr)}}
+.sticky-col{position:sticky;top:84px}
+@media (max-width:999px){.sticky-col{position:static}}
+.chain{display:grid;gap:10px}
+.chain-step{display:flex;gap:12px;align-items:center;border:1px solid var(--border);border-radius:12px;padding:12px 14px;background:var(--surface)}
+.chain-step .ap{flex:none}
+.chain-step.mid .ap{background:var(--accent)}
+.chain-arrow{text-align:center;color:var(--muted);line-height:1}
+.chain-step p{margin:0;font-size:.93em}
+.chain-step b{display:block}
+
+/* charts */
+.chart{width:100%}
+.chart svg{display:block;width:100%;height:auto;overflow:visible}
+.chart .grid-l{stroke:var(--border);stroke-width:1}
+.chart .axis-l{stroke:var(--muted);stroke-width:1.2}
+.chart .tick{font-size:13px;fill:var(--muted)}
+.chart .axis-title{font-size:13.5px;fill:var(--muted);font-weight:600}
+.chart .row-l{font-size:14.5px}
+.chart .val{font-size:14px;font-weight:700}
+.chart .bar{fill:var(--accent)}
+.chart .bar.warn{fill:var(--warn-line)}
+.chart .bar.ghost{fill:url(#hatch);stroke:var(--node-stroke);stroke-width:1}
+.chart .bar.neutral{fill:var(--node-stroke)}
+.compare{display:grid;gap:14px;grid-template-columns:1fr;margin:22px 0}
+@media (min-width:600px){.compare{grid-template-columns:1fr auto 1fr;align-items:center}}
+.compare .card{text-align:center}
+.compare .big{font-size:clamp(2.4rem,1.8rem + 2vw,3.2rem);font-weight:700;line-height:1.05}
+.compare .ok .big{color:var(--good)}
+.compare .bad .big{color:var(--warn)}
+.compare .vs{text-align:center;font-weight:700;color:var(--muted)}
+table{border-collapse:collapse;width:100%;font-size:.93em}
+th,td{text-align:left;vertical-align:top;padding:10px 12px;border-bottom:1px solid var(--border)}
+thead th{font-size:.82rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);background:var(--surface-2)}
+.tablewrap{overflow-x:auto;border:1px solid var(--border);border-radius:12px;background:var(--surface)}
+.tablewrap table{min-width:560px}
+caption{caption-side:top;text-align:left;font-weight:650;padding:12px 12px 8px;font-size:.9rem;letter-spacing:.04em}
+details{margin-top:14px}
+summary{cursor:pointer;color:var(--accent);font-weight:600}
+.na{color:var(--muted);font-style:italic}
+
+/* layers */
+.layers{display:grid;gap:10px;counter-reset:l}
+.layer{display:grid;gap:10px 16px;grid-template-columns:1fr;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;box-shadow:var(--shadow);position:relative}
+@media (min-width:860px){.layer{grid-template-columns:150px minmax(0,1fr) 270px;align-items:center}}
+.layer::before{content:"";position:absolute;left:0;top:10px;bottom:10px;width:5px;border-radius:0 4px 4px 0;background:var(--accent);opacity:calc(.35 + var(--i)*.13)}
+.layer .lname{display:flex;align-items:center;gap:10px;font-weight:650}
+.layer .lname small{display:block;font-weight:500;color:var(--muted);font-size:.8rem}
+.layer .ctrls{font-size:.93em}
+.layer .ctrls .src{color:var(--muted);font-size:.86em}
+.cov{display:grid;grid-template-columns:repeat(6,1fr);gap:4px}
+.cov span{display:flex;align-items:center;justify-content:center;height:30px;border-radius:7px;font-size:.78rem;font-weight:700;border:1.5px dashed var(--border);color:var(--muted)}
+.cov span.on{background:var(--warn-soft);border:1.5px solid var(--warn-line);color:var(--warn)}
+.stage-strip{display:grid;grid-template-columns:repeat(6,1fr);gap:4px;margin:0 0 12px}
+.tradeoffs li{margin-bottom:.5em}
+
+/* ADA */
+.ada-req{display:grid;gap:14px}
+@media (min-width:700px){.ada-req{grid-template-columns:1fr 1fr}}
+.gates{list-style:none;margin:0;padding:0;display:grid;gap:12px}
+.gates li{display:flex;gap:14px;align-items:flex-start;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px}
+.gates .box{flex:none;width:28px;height:28px;border:2.5px solid var(--accent);border-radius:7px;display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--accent);font-size:.85rem}
+.gates p{margin:0}
+.gateflow{margin:18px 0 0}
+.status{display:inline-flex;gap:8px;align-items:center;background:var(--warn-soft);color:var(--warn);padding:6px 14px;border-radius:999px;font-weight:650;font-size:.88rem}
+.ada-layers{display:grid;gap:12px}
+@media (min-width:700px){.ada-layers{grid-template-columns:1fr 1fr}}
+@media (min-width:1000px){.ada-layers{grid-template-columns:1fr 1fr 1fr}}
+.ada-layers .card{padding:16px 18px}
+.ada-layers h4{display:flex;gap:10px;align-items:center;margin-bottom:.5em}
+.ada-layers p{margin:0;font-size:.94em}
+
+/* conclusion */
+.concl{counter-reset:c;list-style:none;padding:0;margin:0;display:grid;gap:14px}
+.concl li{counter-increment:c;display:flex;gap:14px}
+.concl li::before{content:counter(c);flex:none;width:34px;height:34px;border-radius:50%;background:var(--accent);color:var(--bg);display:flex;align-items:center;justify-content:center;font-weight:700}
+.lim{list-style:none;padding:0;margin:0;display:grid;gap:10px}
+.lim.card{padding:22px}
+.lim li{display:flex;gap:10px;align-items:flex-start}
+.lim svg{flex:none;width:20px;height:20px;color:var(--warn);margin-top:4px}
+
+/* refs */
+.refs{list-style:none;padding:0;margin:0;font-size:.9em;max-width:none;columns:1}
+@media (min-width:1000px){.refs{columns:2;column-gap:40px}}
+.refs li{break-inside:avoid;display:flex;gap:10px;margin-bottom:12px;overflow-wrap:anywhere}
+.refs .n{flex:none;font-weight:700;color:var(--muted);min-width:2.4em}
+.refs li:target{background:var(--warn-soft);border-radius:8px}
+footer{padding:36px 0 48px;color:var(--muted);font-size:.88em}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="#top">RAG <span>Security</span></a>
+    <nav class="sections" aria-label="Sections">
+      <ul>
+        <li><a href="#what">What is RAG</a></li>
+        <li><a href="#pipeline-sec">Pipeline</a></li>
+        <li><a href="#risks">Risks</a></li>
+        <li><a href="#incidents">Incidents</a></li>
+        <li><a href="#single">Single defenses</a></li>
+        <li><a href="#layers">Layered model</a></li>
+        <li><a href="#market">Market</a></li>
+        <li><a href="#ada">ADA Assistant</a></li>
+        <li><a href="#conclusion">Conclusion</a></li>
+        <li><a href="#references">References</a></li>
+      </ul>
+    </nav>
+    <button class="theme-btn" id="themeBtn" type="button" aria-label="Switch to dark mode">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+      <span id="themeLbl">Dark</span>
+    </button>
+  </div>
+</header>
+
+<main id="main">
+
+<!-- 1. HERO -->
+<section class="hero" id="top" aria-labelledby="title">
+  <div class="wrap">
+    <span class="eyebrow">A literature and market review</span>
+    <h1 id="title">Security Risks of Retrieval-Augmented Generation Systems and Their Mitigation</h1>
+    <p class="sub">A Literature and Market Review</p>
+    <div class="authors"><span>Amil Alasgarov</span><span>Murad Aghazada</span><span>Mahammad Gulmammadov</span></div>
+    <p class="affil">Baku Higher Oil School, Baku, Azerbaijan</p>
+
+    <div class="rq">
+      <b>Research question</b>
+      <p>What are the main security risks of retrieval-augmented generation systems, and how are they mitigated?</p>
+    </div>
+
+    <div class="grid g3">
+      <div class="card stat">
+        <div class="num">~90<small>%</small></div>
+        <div class="lbl">attack success with only 5 poisoned texts</div>
+        <div class="det">Injecting five malicious texts per target question into a database of millions of texts achieved about 90% attack success (PoisonedRAG) <a class="ref" href="#ref-13">[13]</a>.</div>
+      </div>
+      <div class="card stat warn">
+        <div class="num">3<small>of 6</small></div>
+        <div class="lbl">risks have already occurred in deployed systems</div>
+        <div class="det">Six public incidents from 2024–2025 show indirect prompt injection (A4), confabulation (A5) and exfiltration (A6) in deployed systems; no deployed incident of A1, A2 or A3 was found.</div>
+      </div>
+      <div class="card stat">
+        <div class="num">12</div>
+        <div class="lbl">recent defenses tested against adaptive attacks</div>
+        <div class="det">Nasr et al. tested 12 recent prompt-injection and jailbreak defenses against adaptive attackers and bypassed most of them with over 90% success <a class="ref" href="#ref-18">[18]</a>.</div>
+      </div>
+    </div>
+
+    <div class="meta-row" aria-label="Review scope">
+      <span class="pill">32 external sources + project report</span>
+      <span class="pill">Published 2020–2026</span>
+      <span class="pill">6 attack points · 6 defense layers</span>
+      <span class="pill">Searches last updated Nov. 18, 2026</span>
+    </div>
+  </div>
+</section>
+
+<!-- 2. WHAT IS RAG -->
+<section id="what" aria-labelledby="what-h">
+  <div class="wrap">
+    <span class="eyebrow">Section I–II · Background</span>
+    <h2 id="what-h">What is retrieval-augmented generation (RAG)?</h2>
+    <div class="prose">
+      <p>Large language models used inside organizations need current, organization-specific knowledge that they were not trained on. RAG, introduced by Lewis et al. <a class="ref" href="#ref-1">[1]</a>, combines a pre-trained generator with a retriever over a dense vector index of documents, so the model answers from retrieved passages, and its knowledge can be updated by changing the index instead of retraining the model.</p>
+    </div>
+
+    <div class="flow3" role="group" aria-label="The RAG idea in three steps: a question, retrieving documents, the model answering from them" style="margin:28px 0">
+      <div class="flow-step">
+        <svg viewBox="0 0 52 52" aria-hidden="true"><rect x="3" y="7" width="46" height="32" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><path d="M14 39 l-2 9 l11-9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round"/><text x="26" y="30" text-anchor="middle" font-size="20" font-weight="700" style="fill:var(--accent)">?</text></svg>
+        <div><h3>1. Question</h3><p>A user asks a question. It is converted into an embedding vector.</p></div>
+      </div>
+      <div class="flow-arrow" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 16h20M18 9l7 7-7 7"/></svg></div>
+      <div class="flow-step">
+        <svg viewBox="0 0 52 52" aria-hidden="true"><rect x="6" y="6" width="26" height="32" rx="4" fill="var(--surface-2)" stroke="var(--node-stroke)" stroke-width="2"/><rect x="14" y="12" width="26" height="32" rx="4" fill="var(--surface)" stroke="var(--node-stroke)" stroke-width="2"/><path d="M19 21h16M19 27h16M19 33h10" stroke="var(--node-stroke)" stroke-width="2"/><circle cx="39" cy="39" r="7" fill="var(--surface)" stroke="var(--accent)" stroke-width="2.5"/><path d="M44 44l5 5" stroke="var(--accent)" stroke-width="3" stroke-linecap="round"/></svg>
+        <div><h3>2. Retrieve documents</h3><p>The retriever returns the top-k most similar chunks from the vector database.</p></div>
+      </div>
+      <div class="flow-arrow" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 16h20M18 9l7 7-7 7"/></svg></div>
+      <div class="flow-step">
+        <svg viewBox="0 0 52 52" aria-hidden="true"><rect x="5" y="9" width="42" height="30" rx="8" fill="var(--surface)" stroke="var(--accent)" stroke-width="2"/><path d="M13 19h26M13 26h18" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round"/><path d="M36 39 l3 8 l-10-8" fill="var(--surface)" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round"/><circle cx="41" cy="11" r="7" fill="var(--good-soft)" stroke="var(--good)" stroke-width="2"/><path d="M38 11l2 2 4-4" stroke="var(--good)" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
+        <div><h3>3. Model answers from them</h3><p>A prompt with the instructions, the question and the retrieved chunks goes to the LLM, which answers, often with links and citations <a class="ref" href="#ref-1">[1]</a>, <a class="ref" href="#ref-7">[7]</a>.</p></div>
+      </div>
+    </div>
+
+    <div class="grid g2" style="align-items:start">
+      <div class="card">
+        <h3>RAG became the common enterprise pattern</h3>
+        <p class="small muted">A survey of 600 U.S. enterprise IT decision-makers reported that RAG adoption rose from 31% to 51% between 2023 and 2024, while fine-tuning remained rare <a class="ref" href="#ref-2">[2]</a>.</p>
+        <div class="chart" id="chart-adoption" role="img" aria-label="Bar chart: RAG adoption among surveyed enterprises, 31 percent in 2023 and 51 percent in 2024."></div>
+        <p class="small muted" style="margin-top:8px">Read with care: the surveying firm invests in companies it reports on <a class="ref" href="#ref-27">[27]</a>.</p>
+      </div>
+      <div class="card">
+        <h3>Why this creates a security problem</h3>
+        <p class="small">The model reads text that neither the developer nor the user wrote, from a store that may hold documents with different owners and sensitivity levels, and users trust its answers because they cite official sources. The LLM receives one undivided stream of text:</p>
+        <blockquote>the LLM “is unable to distinguish which sections of prompt belong to various input sources” <a class="ref" href="#ref-8">[8]</a></blockquote>
+        <blockquote>retrieval blurs “the line between data and instructions” <a class="ref" href="#ref-9">[9]</a></blockquote>
+        <p class="small" style="margin:0">Every document that can reach the index therefore crosses a <b>trust boundary</b> into the model’s context. The 2025 OWASP list added a RAG-specific category, LLM08 Vector and Embedding Weaknesses <a class="ref" href="#ref-3">[3]</a>.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 3. PIPELINE -->
+<section id="pipeline-sec" aria-labelledby="pipe-h">
+  <div class="wrap">
+    <span class="eyebrow">Section II · Fig. 1 &amp; Table II</span>
+    <h2 id="pipe-h">The RAG pipeline and its six attack points</h2>
+    <p class="lead">A RAG system has an offline <b>indexing</b> path (documents are ingested, split into chunks, embedded and stored with metadata such as owner, date and access label) and an online <b>answering</b> path. Select a marker <span class="ap">A1</span>–<span class="ap">A6</span> to see the risk and its key evidence.</p>
+
+    <div class="pipe-layout" style="margin-top:24px">
+      <figure class="card">
+        <div class="svgbox" id="pipeline" role="group" aria-label="Fig. 1: RAG pipeline with its trust boundary and six attack points. Indexing row: Document sources, Ingestion and validation, Chunking and embedding, Vector store with metadata. Answering row: User query with identity, Retrieval top-k with filter, Prompt assembly, LLM generation, then Output rendering of text, links and images. A1 poisoning at ingestion, A2 embedding exposure, A3 retrieval without access control, A4 indirect prompt injection, A5 confabulation, A6 exfiltration through rendered output."></div>
+        <div class="legend" aria-hidden="true">
+          <span><svg width="28" height="10"><path d="M2 5h20" stroke="currentColor" stroke-width="1.6"/><path d="M20 1l6 4-6 4z" fill="currentColor"/></svg>Arrows: data flow</span>
+          <span><svg width="28" height="10"><path d="M2 5h24" stroke="currentColor" stroke-width="1.6" stroke-dasharray="5 4"/></svg>Trust boundary</span>
+          <span><span class="ap">A1</span>–<span class="ap">A6</span> attack points (Table II)</span>
+        </div>
+        <figcaption>Fig. 1. RAG pipeline with its trust boundary and six attack points: A1 poisoning at ingestion, A2 embedding exposure, A3 retrieval without access control, A4 indirect prompt injection, A5 confabulation, A6 exfiltration through rendered output.</figcaption>
+      </figure>
+
+      <div>
+        <div class="card info" id="apInfo" aria-live="polite">
+          <h3>Select an attack point</h3>
+          <p class="muted">Hover, tap or use the keyboard (Tab, then Enter) on a marker in the diagram, or use the buttons below.</p>
+        </div>
+        <div class="ap-buttons" role="group" aria-label="Attack points">
+          <button type="button" data-p="A1" aria-pressed="false">A1 Poisoning</button>
+          <button type="button" data-p="A2" aria-pressed="false">A2 Embeddings</button>
+          <button type="button" data-p="A3" aria-pressed="false">A3 Access control</button>
+          <button type="button" data-p="A4" aria-pressed="false">A4 Injection</button>
+          <button type="button" data-p="A5" aria-pressed="false">A5 Confabulation</button>
+          <button type="button" data-p="A6" aria-pressed="false">A6 Exfiltration</button>
+        </div>
+      </div>
+    </div>
+
+    <details>
+      <summary>Show Table II as a table</summary>
+      <div class="tablewrap" style="margin-top:12px">
+        <table>
+          <caption>TABLE II · RAG attack points, risks and evidence</caption>
+          <thead><tr><th>Pt.</th><th>Risk</th><th>Key evidence</th><th>Frameworks</th></tr></thead>
+          <tbody>
+            <tr><td><span class="ap">A1</span></td><td>Knowledge-base poisoning</td><td>5 texts per target question gave about 90% attack success <a class="ref" href="#ref-13">[13]</a></td><td>LLM04, LLM08; AML.T0070, T0071</td></tr>
+            <tr><td><span class="ap">A2</span></td><td>Embedding exposure</td><td>92% of 32-token texts rebuilt exactly from embeddings <a class="ref" href="#ref-14">[14]</a></td><td>LLM08</td></tr>
+            <tr><td><span class="ap">A3</span></td><td>Retrieval without access control</td><td>Retrieval data extracted <a class="ref" href="#ref-7">[7]</a>; membership inference <a class="ref" href="#ref-20">[20]</a></td><td>LLM02, LLM08</td></tr>
+            <tr><td><span class="ap">A4</span></td><td>Indirect prompt injection</td><td>Attacks on Bing Chat and code completion <a class="ref" href="#ref-9">[9]</a></td><td>LLM01; NIST AI 100-2</td></tr>
+            <tr><td><span class="ap">A5</span></td><td>Confabulation</td><td>Air Canada <a class="ref" href="#ref-22">[22]</a>; NYC MyCity <a class="ref" href="#ref-23">[23]</a></td><td>LLM09; NIST AI 600-1</td></tr>
+            <tr><td><span class="ap">A6</span></td><td>Exfiltration via output</td><td>EchoLeak, CVSS 9.3 <a class="ref" href="#ref-17">[17]</a>, <a class="ref" href="#ref-24">[24]</a>; ForcedLeak, CamoLeak <a class="ref" href="#ref-25">[25]</a>, <a class="ref" href="#ref-26">[26]</a></td><td>LLM01, LLM05</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="small muted" style="margin-top:8px">Framework entries refer to the OWASP list <a class="ref" href="#ref-3">[3]</a>, MITRE ATLAS <a class="ref" href="#ref-11">[11]</a> and the NIST publications <a class="ref" href="#ref-4">[4]</a>, <a class="ref" href="#ref-10">[10]</a>.</p>
+    </details>
+  </div>
+</section>
+
+<!-- 4. RISKS -->
+<section id="risks" aria-labelledby="risks-h">
+  <div class="wrap">
+    <span class="eyebrow">Section IV</span>
+    <h2 id="risks-h">The six risks in detail</h2>
+    <p class="lead">Research demonstrates all six risks. For three of them (A4, A5, A6) the paper also found deployed incidents; it found no deployed incident of A1, A2 or A3.</p>
+    <div class="class-bar">
+      <span class="badge research">Shown in research</span><span class="small muted">A1, A2, A3</span>
+      <span class="badge deployed">Seen in deployed incidents</span><span class="small muted">A4, A5, A6</span>
+    </div>
+
+    <div class="grid g3l">
+      <article class="card risk">
+        <div class="risk-head">
+          <svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 4h15l7 7v25H9z"/><path d="M24 4v7h7"/><path d="M20 17c-3 4-5 6-5 9a5 5 0 0 0 10 0c0-3-2-5-5-9z" fill="currentColor" fill-opacity=".2"/></svg>
+          <div><span class="ap">A1</span> <span class="badge research">Shown in research</span><h3>Knowledge-base poisoning</h3></div>
+        </div>
+        <p>The attacker adds crafted texts to the knowledge database so that, for an attacker-chosen question, the texts are retrieved and lead the LLM to an attacker-chosen answer (PoisonedRAG, USENIX Security 2025) <a class="ref" href="#ref-13">[13]</a>.</p>
+        <div class="keynum"><b>about 90%</b><span>attack success with five malicious texts per target question in a database of millions of texts <a class="ref" href="#ref-13">[13]</a></span></div>
+        <p>AgentPoison reached an average attack success of at least 80% while poisoning less than 0.1% of the memory or knowledge base, with at most 1% impact on normal performance <a class="ref" href="#ref-19">[19]</a>.</p>
+        <p class="fw">OWASP LLM04, LLM08 · MITRE ATLAS AML.T0070 (RAG Poisoning), AML.T0071 (False RAG Entry Injection) <a class="ref" href="#ref-11">[11]</a></p>
+      </article>
+
+      <article class="card risk">
+        <div class="risk-head">
+          <svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><ellipse cx="20" cy="9" rx="13" ry="5"/><path d="M7 9v22c0 3 6 5 13 5s13-2 13-5V9"/><path d="M7 20c0 3 6 5 13 5s13-2 13-5"/><circle cx="14" cy="29" r="1.6" fill="currentColor" stroke="none"/><circle cx="20" cy="29" r="1.6" fill="currentColor" stroke="none"/><circle cx="26" cy="29" r="1.6" fill="currentColor" stroke="none"/></svg>
+          <div><span class="ap">A2</span> <span class="badge research">Shown in research</span><h3>Embedding exposure</h3></div>
+        </div>
+        <p>Vector stores are sometimes treated as less sensitive because they hold numbers rather than words. Morris et al. showed this assumption does not hold <a class="ref" href="#ref-14">[14]</a>.</p>
+        <div class="keynum"><b>92%</b><span>of 32-token inputs reconstructed exactly from their embeddings (Vec2Text) <a class="ref" href="#ref-14">[14]</a></span></div>
+        <p>The method also recovered full names from clinical notes; the authors conclude embeddings should be treated with the same precautions as raw data <a class="ref" href="#ref-14">[14]</a>.</p>
+        <p class="fw">OWASP LLM08 (embedding inversion) <a class="ref" href="#ref-3">[3]</a></p>
+      </article>
+
+      <article class="card risk">
+        <div class="risk-head">
+          <svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="9" y="18" width="22" height="17" rx="3"/><path d="M14 18v-5a6 6 0 0 1 11.5-2.4"/><circle cx="20" cy="26" r="2.4" fill="currentColor"/></svg>
+          <div><span class="ap">A3</span> <span class="badge research">Shown in research</span><h3>Retrieval without access control</h3></div>
+        </div>
+        <p>If retrieval ranks by similarity alone, any user’s question can pull in a chunk the user could not open in the source system <a class="ref" href="#ref-3">[3]</a>.</p>
+        <div class="keynum"><b>116 of 250</b><span>composite prompts made the system reproduce retrieved content verbatim (Enron e-mail corpus, GPT-3.5-turbo) <a class="ref" href="#ref-7">[7]</a></span></div>
+        <p>Answers can also reveal whether a document is in the database: a simple prompt performs membership inference <a class="ref" href="#ref-20">[20]</a>. Slack AI is classified under A4 and A6, not A3, because the retrieved channels were public.</p>
+        <p class="fw">OWASP LLM02, LLM08</p>
+      </article>
+
+      <article class="card risk dep">
+        <div class="risk-head">
+          <svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M8 5h17l7 7v23H8z"/><path d="M13 17h14M13 22h14"/><path d="M13 28l4 2-4 2" stroke-linecap="round" stroke-linejoin="round"/><path d="M20 32h7" stroke-linecap="round"/></svg>
+          <div><span class="ap">A4</span> <span class="badge deployed">Seen in deployed incidents</span><h3>Indirect prompt injection</h3></div>
+        </div>
+        <p>The attacker does not talk to the model but places instructions in content the application is likely to retrieve, such as a web page, an e-mail or a shared document <a class="ref" href="#ref-9">[9]</a>.</p>
+        <div class="keynum"><b>LLM01</b><span>prompt injection is ranked first in the OWASP list <a class="ref" href="#ref-3">[3]</a></span></div>
+        <p>Processing retrieved prompts can act like arbitrary code execution <a class="ref" href="#ref-9">[9]</a>. Retrieval is the mechanism that delivers the payload: the more sources the index ingests, the more places an attacker can plant one.</p>
+        <p class="fw">Incidents: Slack AI, EchoLeak, ForcedLeak, CamoLeak · NIST AI 100-2 <a class="ref" href="#ref-4">[4]</a></p>
+      </article>
+
+      <article class="card risk dep">
+        <div class="risk-head">
+          <svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 9h30v19H18l-7 6v-6H5z" stroke-linejoin="round"/><path d="M17 15a3 3 0 1 1 4 2.8c-1 .4-1 1.2-1 2.2" stroke-linecap="round"/><circle cx="20" cy="24" r="1.3" fill="currentColor"/></svg>
+          <div><span class="ap">A5</span> <span class="badge deployed">Seen in deployed incidents</span><h3>Confabulation despite grounding</h3></div>
+        </div>
+        <p>RAG reduces but does not remove unsupported answers. The model can misread a passage, merge two passages, or answer although no relevant passage exists.</p>
+        <div class="keynum"><b>CAD 650.88</b><span>fare difference plus interest and fees awarded against Air Canada over its chatbot’s answer <a class="ref" href="#ref-22">[22]</a></span></div>
+        <p>NIST AI 600-1 lists confabulation among twelve risks unique to or made worse by generative AI <a class="ref" href="#ref-10">[10]</a>. For an assistant that speaks for an organization, a wrong answer is a liability.</p>
+        <p class="fw">Incidents: Air Canada, NYC MyCity · OWASP LLM09 Misinformation</p>
+      </article>
+
+      <article class="card risk dep">
+        <div class="risk-head">
+          <svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="4" y="8" width="22" height="24" rx="3"/><path d="M9 26l5-6 4 4 3-3 3 5" stroke-linejoin="round"/><path d="M24 17h12M31 12l5 5-5 5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <div><span class="ap">A6</span> <span class="badge deployed">Seen in deployed incidents</span><h3>Exfiltration through rendered output</h3></div>
+        </div>
+        <p>If the model outputs a link or image whose URL contains retrieved data, the client sends that data to the attacker when it loads the image or the user clicks the link.</p>
+        <div class="keynum"><b>CVSS 9.3</b><span>EchoLeak, described as the first real-world zero-click prompt-injection exploit in a production LLM system <a class="ref" href="#ref-17">[17]</a>, <a class="ref" href="#ref-24">[24]</a></span></div>
+        <p>“The injection supplies the instruction, retrieval supplies the secret and rendering delivers it.”</p>
+        <p class="fw">Incidents: Slack AI, EchoLeak, ForcedLeak, CamoLeak · OWASP LLM01, LLM05</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- 5. INCIDENTS -->
+<section id="incidents" aria-labelledby="inc-h">
+  <div class="wrap">
+    <span class="eyebrow">Section V · Table III</span>
+    <h2 id="inc-h">Real incidents, 2024–2025</h2>
+    <p class="lead">Six public cases show three of the risks (A4, A5 and A6) in deployed systems. Each card names the control that could have reduced the risk (Table III).</p>
+
+    <div class="inc-layout" style="margin-top:28px">
+      <ol class="tl" aria-label="Incident timeline">
+        <li class="yr" aria-hidden="true">2024</li>
+        <li class="a5">
+          <span class="dot" aria-hidden="true"></span>
+          <article class="card inc">
+            <h3>Air Canada chatbot</h3>
+            <div class="when">February 2024 · Moffatt v. Air Canada, decided Feb. 14, 2024 <a class="ref" href="#ref-22">[22]</a></div>
+            <div class="pts"><span class="ap">A5</span></div>
+            <p>The British Columbia Civil Resolution Tribunal held the airline liable for negligent misrepresentation after its website chatbot told a customer that a bereavement fare could be claimed retroactively, which contradicted the airline’s own policy. The tribunal rejected the argument that the chatbot was a separate entity and awarded the fare difference of CAD 650.88 plus interest and fees <a class="ref" href="#ref-22">[22]</a>. The chatbot’s architecture was not disclosed, so the case is weaker evidence for RAG specifically.</p>
+            <div class="ctrl"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M10 2l7 3v5c0 4-3 7-7 8-4-1-7-4-7-8V5z"/><path d="M7 10l2 2 4-4" stroke-linecap="round"/></svg><span><b>Control:</b> Answers bound to the current policy text, with refusal when none applies</span></div>
+          </article>
+        </li>
+        <li class="a5">
+          <span class="dot" aria-hidden="true"></span>
+          <article class="card inc">
+            <h3>NYC MyCity chatbot</h3>
+            <div class="when">March 2024 · reported by The Markup, Mar. 29, 2024 <a class="ref" href="#ref-23">[23]</a></div>
+            <div class="pts"><span class="ap">A5</span></div>
+            <p>New York City’s Microsoft-powered MyCity chatbot told users that employers could take a share of workers’ tips and that landlords could refuse housing vouchers, both illegal in the city. It gave different answers when several staff members asked the same question, and carried a disclaimer that its responses may be inaccurate or incomplete <a class="ref" href="#ref-23">[23]</a>. A disclaimer does not repair an inaccurate answer.</p>
+            <div class="ctrl"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M10 2l7 3v5c0 4-3 7-7 8-4-1-7-4-7-8V5z"/><path d="M7 10l2 2 4-4" stroke-linecap="round"/></svg><span><b>Control:</b> Grounding check and accuracy testing before release</span></div>
+          </article>
+        </li>
+        <li>
+          <span class="dot" aria-hidden="true"></span>
+          <article class="card inc">
+            <h3>Slack AI</h3>
+            <div class="when">August 2024 · disclosed by PromptArmor, Aug. 20, 2024 <a class="ref" href="#ref-21">[21]</a></div>
+            <div class="pts"><span class="ap">A4</span><span class="ap">A6</span></div>
+            <p>Slack AI retrieved content from public channels even when the querying user was not a member. An attacker could post an instruction in a public channel; when a victim later asked about data in a private channel, the answer drew on both and rendered a link that would send the data, for example an API key, to the attacker <a class="ref" href="#ref-21">[21]</a>. Reading a public channel was within the user’s permissions, so no access control was bypassed.</p>
+            <div class="ctrl"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M10 2l7 3v5c0 4-3 7-7 8-4-1-7-4-7-8V5z"/><path d="M7 10l2 2 4-4" stroke-linecap="round"/></svg><span><b>Control:</b> Channel content treated as data; no unvetted links in answers</span></div>
+          </article>
+        </li>
+        <li class="yr" aria-hidden="true">2025</li>
+        <li>
+          <span class="dot" aria-hidden="true"></span>
+          <article class="card inc">
+            <h3>EchoLeak in Microsoft 365 Copilot</h3>
+            <div class="when">2025 · reported Jan. 2025, fixed in May, disclosed June 11, 2025 <a class="ref" href="#ref-17">[17]</a> · CVE-2025-32711, CVSS 9.3 <a class="ref" href="#ref-24">[24]</a></div>
+            <div class="pts"><span class="ap">A4</span><span class="ap">A6</span></div>
+            <p>Aim Labs found that a remote, unauthenticated attacker could exfiltrate data from a victim’s Copilot context by sending a single crafted e-mail, without any user interaction. The exploit chained bypasses: the e-mail evaded the cross-prompt-injection classifier, reference-style links escaped link redaction, and a Microsoft Teams URL-preview endpoint on the allowlist bypassed the content security policy <a class="ref" href="#ref-17">[17]</a>. No known exploitation in the wild.</p>
+            <div class="ctrl"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M10 2l7 3v5c0 4-3 7-7 8-4-1-7-4-7-8V5z"/><path d="M7 10l2 2 4-4" stroke-linecap="round"/></svg><span><b>Control:</b> External content kept apart from internal data; egress allowlist covering all link forms</span></div>
+          </article>
+        </li>
+        <li>
+          <span class="dot" aria-hidden="true"></span>
+          <article class="card inc">
+            <h3>ForcedLeak in Salesforce Agentforce</h3>
+            <div class="when">2025 · reported July 28, disclosed Sep. 25, 2025 · CVSS 9.4 <a class="ref" href="#ref-25">[25]</a></div>
+            <div class="pts"><span class="ap">A4</span><span class="ap">A6</span></div>
+            <p>Noma Security placed instructions in the description field of a public Web-to-Lead form; when an employee later asked the agent to work on that lead, it sent other leads’ data out through an image URL. The content security policy still trusted an expired domain, which the researchers bought for five dollars <a class="ref" href="#ref-25">[25]</a>.</p>
+            <div class="ctrl"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M10 2l7 3v5c0 4-3 7-7 8-4-1-7-4-7-8V5z"/><path d="M7 10l2 2 4-4" stroke-linecap="round"/></svg><span><b>Control:</b> Untrusted form data marked as data; allowlist free of expired domains</span></div>
+          </article>
+        </li>
+        <li>
+          <span class="dot" aria-hidden="true"></span>
+          <article class="card inc">
+            <h3>CamoLeak in GitHub Copilot Chat</h3>
+            <div class="when">2025 · Legit Security, published Sep. 30, 2025 · CVSS 9.6 <a class="ref" href="#ref-26">[26]</a></div>
+            <div class="pts"><span class="ap">A4</span><span class="ap">A6</span></div>
+            <p>Copilot Chat followed instructions hidden in invisible comments of a pull-request description. Combined with a content-security-policy bypass through GitHub’s own image proxy, this let an attacker extract secrets and source code from a victim’s private repositories. GitHub fixed it by disabling image rendering in Copilot Chat <a class="ref" href="#ref-26">[26]</a>.</p>
+            <div class="ctrl"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M10 2l7 3v5c0 4-3 7-7 8-4-1-7-4-7-8V5z"/><path d="M7 10l2 2 4-4" stroke-linecap="round"/></svg><span><b>Control:</b> Hidden text treated as untrusted; no image rendering through proxies</span></div>
+          </article>
+        </li>
+      </ol>
+
+      <aside class="sticky-col" aria-label="Attack chain and lessons">
+        <div class="card">
+          <h3>The attack chain behind the data leaks</h3>
+          <p class="small muted">In all four disclosed vulnerabilities that enabled data exfiltration, the injection (A4) caused harm only because retrieval could reach sensitive data the attacker could not see and the answer could send data out of the system (A6).</p>
+          <div class="chain" role="list" aria-label="Attack chain: injection A4, then retrieval reaches sensitive data, then output carries it out A6">
+            <div class="chain-step" role="listitem"><span class="ap">A4</span><p><b>Injection</b>supplies the instruction</p></div>
+            <div class="chain-arrow" aria-hidden="true">▼</div>
+            <div class="chain-step mid" role="listitem"><span class="ap" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><ellipse cx="7" cy="3.5" rx="5" ry="2"/><path d="M2 3.5v7c0 1.1 2.2 2 5 2s5-.9 5-2v-7"/></svg></span><p><b>Retrieval reaches sensitive data</b>supplies the secret</p></div>
+            <div class="chain-arrow" aria-hidden="true">▼</div>
+            <div class="chain-step" role="listitem"><span class="ap">A6</span><p><b>Output carries it out</b>rendering delivers it</p></div>
+          </div>
+          <p class="small" style="margin:12px 0 0"><b>Breaking any link of that chain would have prevented the loss.</b></p>
+        </div>
+
+        <div class="card" style="margin-top:18px">
+          <h3>Severity of the three 2025 exfiltration flaws</h3>
+          <div class="chart" id="chart-cvss" role="img" aria-label="Bar chart of CVSS scores: EchoLeak 9.3, ForcedLeak 9.4, CamoLeak 9.6, on a 0 to 10 scale."></div>
+          <p class="small muted" style="margin:8px 0 0">In EchoLeak, ForcedLeak and CamoLeak a trusted or allowlisted domain carried the data out <a class="ref" href="#ref-17">[17]</a>, <a class="ref" href="#ref-25">[25]</a>, <a class="ref" href="#ref-26">[26]</a>.</p>
+        </div>
+
+        <div class="card" style="margin-top:18px">
+          <h3>Three lessons</h3>
+          <ol class="small" style="padding-left:1.2em;margin:0">
+            <li><b>Attacks combine attack points.</b> A4 caused harm only together with retrieval of sensitive data and A6.</li>
+            <li><b>Detection alone is not enough.</b> The classifier-based defenses in EchoLeak failed; the architecture must restrict where data can flow.</li>
+            <li><b>Trusted channels amplify harm.</b> In the reliability cases the harm came through the organization’s own trusted channel, which made users more likely to believe a wrong answer.</li>
+          </ol>
+        </div>
+      </aside>
+    </div>
+  </div>
+</section>
+
+<!-- 6. SINGLE DEFENSES -->
+<section id="single" aria-labelledby="single-h">
+  <div class="wrap">
+    <span class="eyebrow">Section VI-C · Table V</span>
+    <h2 id="single-h">Why single defenses fail</h2>
+    <p class="lead">Defenses that look strong in their original evaluation can fail against an adaptive attacker. Nasr et al. tested 12 recent defenses, including spotlighting, prompt sandwiching, PromptGuard and Model Armor, and bypassed most of them with over 90% success, although many had reported near-zero attack success in their original evaluations <a class="ref" href="#ref-18">[18]</a>.</p>
+
+    <div class="compare" role="group" aria-label="Spotlighting: below 2 percent attack success in static tests versus above 95 percent under adaptive attack">
+      <div class="card ok">
+        <div class="small muted">Spotlighting, static attacks <a class="ref" href="#ref-8">[8]</a></div>
+        <div class="big">&lt; 2%</div>
+        <div class="small">indirect-injection success, down from above 50% (GPT-family models)</div>
+      </div>
+      <div class="vs">vs.</div>
+      <div class="card bad">
+        <div class="small muted">Spotlighting, adaptive attacks (AgentDojo) <a class="ref" href="#ref-18">[18]</a></div>
+        <div class="big">&gt; 95%</div>
+        <div class="small">attack success</div>
+      </div>
+    </div>
+
+    <figure class="card">
+      <h3>Published measurements of individual defenses (attack success)</h3>
+      <div class="chart" id="chart-defenses" role="img" aria-label="Horizontal bar chart of attack success rate in percent under individual defenses. Query paraphrasing versus poisoning: 79 to 93 percent. Retrieving 50 passages: 41 to 43 percent on HotpotQA. Spotlighting static attacks: from above 50 percent to below 2 percent. Spotlighting adaptive attacks on AgentDojo: above 95 percent."></div>
+      <figcaption>Built from Table V. Only rows that report an attack-success percentage are drawn. Ranges are drawn as a segment between the two reported values; “above” and “below” values are drawn up to the reported bound with an open (dashed) end. The hatched bar is the success rate without spotlighting.</figcaption>
+      <details>
+        <summary>Show full Table V (including non-numeric results)</summary>
+        <div class="tablewrap" style="margin-top:12px">
+          <table>
+            <caption>TABLE V · Published measurements of individual defenses</caption>
+            <thead><tr><th>Defense</th><th>Reported result</th><th>Source</th></tr></thead>
+            <tbody>
+              <tr><td>Query paraphrasing vs. poisoning</td><td>Attack success stays at 79–93%</td><td><a class="ref" href="#ref-13">[13]</a></td></tr>
+              <tr><td>Duplicate-text filtering</td><td>Attack success unchanged</td><td><a class="ref" href="#ref-13">[13]</a></td></tr>
+              <tr><td>Perplexity-based detection</td><td>High false-positive rate</td><td><a class="ref" href="#ref-13">[13]</a></td></tr>
+              <tr><td>Retrieving 50 passages (k = 50)</td><td>41–43% success on HotpotQA</td><td><a class="ref" href="#ref-13">[13]</a></td></tr>
+              <tr><td>Distance threshold vs. extraction</td><td>Less leakage, lower answer quality</td><td><a class="ref" href="#ref-7">[7]</a></td></tr>
+              <tr><td>Spotlighting, static attacks</td><td>Above 50% to below 2%</td><td><a class="ref" href="#ref-8">[8]</a></td></tr>
+              <tr><td>Spotlighting, adaptive attacks (AgentDojo)</td><td>Above 95% attack success</td><td><a class="ref" href="#ref-18">[18]</a></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </details>
+    </figure>
+
+    <div class="grid g3" style="margin-top:18px">
+      <div class="card"><h3>Duplicate-text filtering</h3><p class="small" style="margin:0">Attack success unchanged <a class="ref" href="#ref-13">[13]</a>.</p></div>
+      <div class="card"><h3>Perplexity-based detection</h3><p class="small" style="margin:0">High false-positive rate <a class="ref" href="#ref-13">[13]</a>.</p></div>
+      <div class="card"><h3>Distance threshold</h3><p class="small" style="margin:0">Less leakage, but lower answer quality: a privacy-utility trade-off <a class="ref" href="#ref-7">[7]</a>.</p></div>
+    </div>
+
+    <div class="note warn">These controls are probabilistic, and NIST notes theoretical limits on achieving full adversarial robustness <a class="ref" href="#ref-4">[4]</a>. The design must assume that some injections succeed and limit their effect through the retrieval, output and privilege layers.</div>
+  </div>
+</section>
+
+<!-- 7. LAYERED MODEL -->
+<section id="layers" aria-labelledby="layers-h">
+  <div class="wrap">
+    <span class="eyebrow">Section VI · Table IV</span>
+    <h2 id="layers-h">A layered defense model</h2>
+    <p class="lead">The reviewed guidance recommends defense in depth. The paper organizes the controls by pipeline stage into six layers, L1–L6. Each row shows which attack points the layer protects against.</p>
+
+    <div class="layers" role="table" aria-label="Table IV, layered mitigation model: layer, main controls, risks covered" style="margin-top:24px">
+      <div class="layer" style="--i:0" role="row">
+        <div class="lname" role="rowheader"><span class="lp">L1</span><span>Ingestion<small>Governed ingestion</small></span></div>
+        <div class="ctrls" role="cell">Source allowlist, approval of each version, provenance metadata, hidden-text checks <span class="src"><a class="ref" href="#ref-3">[3]</a>, <a class="ref" href="#ref-13">[13]</a></span></div>
+        <div class="cov" role="cell" aria-label="Protects against A1"><span class="on">A1</span><span>A2</span><span>A3</span><span>A4</span><span>A5</span><span>A6</span></div>
+      </div>
+      <div class="layer" style="--i:1" role="row">
+        <div class="lname" role="rowheader"><span class="lp">L2</span><span>Retrieval<small>Permission-aware retrieval</small></span></div>
+        <div class="ctrls" role="cell">Per-chunk access filter, encrypted store, tenant isolation <span class="src"><a class="ref" href="#ref-3">[3]</a>, <a class="ref" href="#ref-16">[16]</a>, <a class="ref" href="#ref-28">[28]</a></span></div>
+        <div class="cov" role="cell" aria-label="Protects against A2 and A3"><span>A1</span><span class="on">A2</span><span class="on">A3</span><span>A4</span><span>A5</span><span>A6</span></div>
+      </div>
+      <div class="layer" style="--i:2" role="row">
+        <div class="lname" role="rowheader"><span class="lp">L3</span><span>Prompt<small>Separate instructions from data</small></span></div>
+        <div class="ctrls" role="cell">Spotlighting, partitioning of untrusted text <span class="src"><a class="ref" href="#ref-8">[8]</a>, <a class="ref" href="#ref-17">[17]</a></span></div>
+        <div class="cov" role="cell" aria-label="Protects against A4"><span>A1</span><span>A2</span><span>A3</span><span class="on">A4</span><span>A5</span><span>A6</span></div>
+      </div>
+      <div class="layer" style="--i:3" role="row">
+        <div class="lname" role="rowheader"><span class="lp">L4</span><span>Output<small>Grounding &amp; output validation</small></span></div>
+        <div class="ctrls" role="cell">Grounding check, refusal, domain allowlist, strict CSP <span class="src"><a class="ref" href="#ref-17">[17]</a>, <a class="ref" href="#ref-30">[30]</a></span></div>
+        <div class="cov" role="cell" aria-label="Protects against A5 and A6"><span>A1</span><span>A2</span><span>A3</span><span>A4</span><span class="on">A5</span><span class="on">A6</span></div>
+      </div>
+      <div class="layer" style="--i:4" role="row">
+        <div class="lname" role="rowheader"><span class="lp">L5</span><span>Privilege<small>Least privilege &amp; oversight</small></span></div>
+        <div class="ctrls" role="cell">No write tools, user confirmation, authorization outside the model <span class="src"><a class="ref" href="#ref-3">[3]</a>, <a class="ref" href="#ref-17">[17]</a></span></div>
+        <div class="cov" role="cell" aria-label="Protects against A4 to A6"><span>A1</span><span>A2</span><span>A3</span><span class="on">A4</span><span class="on">A5</span><span class="on">A6</span></div>
+      </div>
+      <div class="layer" style="--i:5" role="row">
+        <div class="lname" role="rowheader"><span class="lp">L6</span><span>Assurance<small>Evaluation, red teaming, governance</small></span></div>
+        <div class="ctrls" role="cell">Red teaming, RAGAS metrics, logging, NIST AI RMF <span class="src"><a class="ref" href="#ref-10">[10]</a>, <a class="ref" href="#ref-12">[12]</a>, <a class="ref" href="#ref-15">[15]</a></span></div>
+        <div class="cov" role="cell" aria-label="Protects against all attack points"><span class="on">A1</span><span class="on">A2</span><span class="on">A3</span><span class="on">A4</span><span class="on">A5</span><span class="on">A6</span></div>
+      </div>
+    </div>
+    <p class="small muted" style="margin-top:10px">Shaded cells: risks listed for the layer in Table IV (L5: A4–A6; L6: All).</p>
+
+    <div class="grid g2" style="margin-top:26px">
+      <div class="card">
+        <h3>Key points per layer</h3>
+        <ul class="small" style="padding-left:1.2em;margin:0">
+          <li><b>L1</b> Because a few documents can poison an index, ingestion is a security boundary, not only a data-engineering step; controlling who may add content matters more than detecting bad content afterwards <a class="ref" href="#ref-13">[13]</a>.</li>
+          <li><b>L2</b> The retriever should return only chunks the requesting user may read in the source system; because embeddings can be inverted <a class="ref" href="#ref-14">[14]</a>, the vector store needs the same encryption and access restrictions as the source documents.</li>
+          <li><b>L3</b> Spotlighting delimits, marks or encodes retrieved text so the model can recognize it as data <a class="ref" href="#ref-8">[8]</a>, but it is probabilistic <a class="ref" href="#ref-18">[18]</a>.</li>
+          <li><b>L4</b> Check a draft answer against the retrieved passages and refuse when none supports it; allow links and images only from approved domains, covering every link syntax and every proxy endpoint <a class="ref" href="#ref-17">[17]</a>, <a class="ref" href="#ref-30">[30]</a>.</li>
+          <li><b>L5</b> An assistant that only answers has a smaller blast radius than one that can send e-mail or change records <a class="ref" href="#ref-3">[3]</a>, <a class="ref" href="#ref-17">[17]</a>.</li>
+          <li><b>L6</b> The OWASP GenAI Red Teaming Guide organizes testing in four areas <a class="ref" href="#ref-12">[12]</a>; RAGAS measures faithfulness, answer relevance and context relevance <a class="ref" href="#ref-15">[15]</a>.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Layering has a cost</h3>
+        <p class="small">None of the cited studies measures the engineering cost of layering.</p>
+        <ol class="small tradeoffs" style="padding-left:1.2em;margin:0">
+          <li>A grounding check on every response, such as the Bedrock contextual grounding check <a class="ref" href="#ref-30">[30]</a>, can add latency and per-query cost.</li>
+          <li>Strict grounding thresholds and refusal rules reduce confabulation (A5) but can refuse valid questions whose wording differs from the official text.</li>
+          <li>Human approval before indexing prevents premature or poisoned updates (A1) but slows the publication of urgent changes.</li>
+        </ol>
+        <p class="small" style="margin:10px 0 0">These trade-offs need to be measured on the deployed system.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 8. MARKET -->
+<section id="market" aria-labelledby="market-h">
+  <div class="wrap">
+    <span class="eyebrow">Section VII · Table VI</span>
+    <h2 id="market-h">Market review</h2>
+    <div class="grid g2" style="align-items:start">
+      <div class="prose">
+        <p>Enterprise adoption of RAG grew quickly. The Menlo Ventures survey reported that 51% of enterprises used RAG in 2024 and that Pinecone, a dedicated vector database, held an 18% share against 15% for general-purpose Postgres <a class="ref" href="#ref-2">[2]</a>. These figures should be read with care, since the firm invests in companies it reports on, including Pinecone <a class="ref" href="#ref-27">[27]</a>.</p>
+        <p>Vendors now sell several Table IV controls as platform features. Table VI compares three platforms using only their own documentation.</p>
+      </div>
+      <div class="card">
+        <h3>Reported vector database share, 2024</h3>
+        <div class="chart" id="chart-share" role="img" aria-label="Bar chart: Pinecone 18 percent share, Postgres 15 percent share, as reported by Menlo Ventures."></div>
+        <p class="small muted" style="margin:8px 0 0">Source: <a class="ref" href="#ref-2">[2]</a>; potential conflict of interest noted in <a class="ref" href="#ref-27">[27]</a>.</p>
+      </div>
+    </div>
+
+    <div class="tablewrap" style="margin-top:22px">
+      <table>
+        <caption>TABLE VI · Documented security features of selected platforms</caption>
+        <thead><tr><th>Platform</th><th>Retrieval access control (L2)</th><th>Injection or grounding control (L3, L4)</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Azure AI Search with Content Safety</th><td>Security filters; ACL and RBAC metadata; Purview labels <a class="ref" href="#ref-28">[28]</a>, <a class="ref" href="#ref-29">[29]</a></td><td>Prompt Shields for document attacks <a class="ref" href="#ref-31">[31]</a></td></tr>
+          <tr><th scope="row">Amazon Bedrock</th><td class="na">Not covered in the reviewed sources</td><td>Prompt-attack filter; contextual grounding check <a class="ref" href="#ref-30">[30]</a>, <a class="ref" href="#ref-32">[32]</a></td></tr>
+          <tr><th scope="row">Pinecone</th><td>Project-level RBAC for users and API keys <a class="ref" href="#ref-33">[33]</a></td><td class="na">Not covered in the reviewed source</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="small muted prose" style="margin-top:10px">Microsoft warns that the simple security-filter approach performs no authentication or authorization <a class="ref" href="#ref-29">[29]</a>, so the application must pass the correct identity. With Pinecone, per-document permissions must be built by the application, for example with metadata filters <a class="ref" href="#ref-33">[33]</a>. The open-source RAGAS framework integrates with LlamaIndex and LangChain <a class="ref" href="#ref-15">[15]</a>.</p>
+
+    <h3 style="margin-top:30px">Two gaps in the product documentation</h3>
+    <div class="grid g2">
+      <div class="card">
+        <div class="risk-head" style="margin-bottom:8px"><svg viewBox="0 0 40 40" width="40" height="40" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--warn)" aria-hidden="true"><path d="M8 5h17l7 7v23H8z"/><path d="M14 20h12M20 14v12" stroke-linecap="round"/></svg><b>Gap 1 · Ingestion governance</b></div>
+        <p class="small" style="margin:0">Products concentrate on guardrails around the model and on filtering at retrieval; few address ingestion governance, that is, who may add a document and who approves it, although PoisonedRAG shows that poisoning needs only a few texts and little computation <a class="ref" href="#ref-13">[13]</a>. A grounding check measures agreement with the retrieved text, so it cannot detect a poisoned passage that was retrieved.</p>
+      </div>
+      <div class="card">
+        <div class="risk-head" style="margin-bottom:8px"><svg viewBox="0 0 40 40" width="40" height="40" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--warn)" aria-hidden="true"><path d="M6 34V8M6 34h28"/><rect x="11" y="20" width="5" height="14"/><rect x="20" y="14" width="5" height="20" stroke-dasharray="3 2"/><text x="28" y="12" font-size="11" stroke="none" fill="currentColor">?</text></svg><b>Gap 2 · Measured effectiveness</b></div>
+        <p class="small" style="margin:0">Vendor documentation describes features rather than measured effectiveness, so buyers have to test the controls themselves, for example with the red-teaming approach of Section VI-F; the bypass rates reported by Nasr et al. <a class="ref" href="#ref-18">[18]</a> show why vendor-reported detection rates are not enough.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 9. ADA -->
+<section id="ada" aria-labelledby="ada-h">
+  <div class="wrap">
+    <span class="eyebrow">Section VIII</span>
+    <h2 id="ada-h">Application to the ADA AI Assistant</h2>
+    <p class="lead">The course project designs the ADA AI Assistant, which answers newcomers’ questions about registration, deadlines and student services at ADA University from approved university documents instead of informal messaging groups <a class="ref" href="#ref-5">[5]</a>.</p>
+    <p><span class="status"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="8" cy="8" r="6.5"/><path d="M8 4.5V8l2.5 1.5" stroke-linecap="round"/></svg>Design: still needs validation</span></p>
+    <p class="small muted prose">The paper includes no experiments of its own; the mitigation model is a synthesis that still needs validation, for example by testing the ADA assistant prototype against the attacks in Table II.</p>
+
+    <div class="ada-req" style="margin:22px 0">
+      <div class="card"><h3 style="font-size:1rem">Requirement 1</h3><p class="small" style="margin:0">The assistant must never disclose one student’s data to another person.</p></div>
+      <div class="card"><h3 style="font-size:1rem">Requirement 2</h3><p class="small" style="margin:0">An official date must not reach students before it is approved, a rule motivated by an incident in which a wrong withdrawal deadline was published <a class="ref" href="#ref-5">[5]</a>.</p></div>
+    </div>
+    <p class="small muted">Both requirements were gathered in an interview with an academic advisor.</p>
+
+    <h3 style="margin-top:26px">Design per layer</h3>
+    <div class="ada-layers">
+      <div class="card"><h4><span class="lp">L1</span> Ingestion</h4><p>Only document versions uploaded by the owning office and signed by an approver who is not the owner are indexed; date announcements need a second, different approver, and retired versions leave the index.</p></div>
+      <div class="card"><h4><span class="lp">L2</span> Retrieval</h4><p>Each chunk carries a Public, Students or Staff-only label, retrieval filters by the user’s role, and confidential records are never indexed.</p></div>
+      <div class="card"><h4><span class="lp">L3</span> Prompt</h4><p>The student’s question and the retrieved passages are marked as data in the prompt.</p></div>
+      <div class="card"><h4><span class="lp">L4</span> Output</h4><p>Every statement and date in a draft answer must match an approved passage, otherwise the assistant refers the student to the responsible office, and answers may link only to the university’s own domain.</p></div>
+      <div class="card"><h4><span class="lp">L5</span> Privilege</h4><p>The language model has no tools and no write access.</p></div>
+      <div class="card"><h4><span class="lp">L6</span> Assurance</h4><p>A fixed set of injection, leakage and accuracy test questions is run before each release, approval decisions are logged for audit, and every chat opens with a notice that the user is talking to an AI system.</p></div>
+    </div>
+
+    <div class="grid g2" style="margin-top:28px;align-items:start">
+      <div>
+        <h3>Four release gates</h3>
+        <p class="small muted">An index or model update is promoted only if:</p>
+        <ol class="gates">
+          <li><span class="box" aria-hidden="true">1</span><p>No test query retrieves a passage above the user’s role (Public, Students, Staff-only).</p></li>
+          <li><span class="box" aria-hidden="true">2</span><p>Every rendered link or image outside the university domain is blocked.</p></li>
+          <li><span class="box" aria-hidden="true">3</span><p>No prompt in the red-team suite changes an official date or policy answer or produces output outside the allowed format.</p></li>
+          <li><span class="box" aria-hidden="true">4</span><p>RAGAS faithfulness and context-relevance scores <a class="ref" href="#ref-15">[15]</a> are not lower than those of the previous release.</p></li>
+        </ol>
+      </div>
+      <div class="card">
+        <h3>Release flow</h3>
+        <div class="svgbox gateflow" style="max-width:340px;margin-left:auto;margin-right:auto">
+          <svg viewBox="0 0 300 330" role="img" aria-label="Release flow: an index or model update passes gates 1 to 4 in turn and is then promoted; any failed gate blocks the release.">
+            <defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="var(--muted)"/></marker></defs>
+            <rect x="60" y="6" width="180" height="40" rx="10" fill="var(--surface-2)" stroke="var(--node-stroke)"/>
+            <text x="150" y="31" text-anchor="middle" font-size="14">Index or model update</text>
+            <g font-size="14">
+              <path d="M150 46v14" stroke="var(--muted)" stroke-width="1.6" marker-end="url(#ah)"/>
+              <rect x="90" y="62" width="120" height="36" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="150" y="85" text-anchor="middle">Gate 1</text>
+              <path d="M150 98v14" stroke="var(--muted)" stroke-width="1.6" marker-end="url(#ah)"/>
+              <rect x="90" y="114" width="120" height="36" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="150" y="137" text-anchor="middle">Gate 2</text>
+              <path d="M150 150v14" stroke="var(--muted)" stroke-width="1.6" marker-end="url(#ah)"/>
+              <rect x="90" y="166" width="120" height="36" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="150" y="189" text-anchor="middle">Gate 3</text>
+              <path d="M150 202v14" stroke="var(--muted)" stroke-width="1.6" marker-end="url(#ah)"/>
+              <rect x="90" y="218" width="120" height="36" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="150" y="241" text-anchor="middle">Gate 4</text>
+              <path d="M150 254v14" stroke="var(--muted)" stroke-width="1.6" marker-end="url(#ah)"/>
+              <rect x="80" y="270" width="140" height="40" rx="10" fill="var(--good-soft)" stroke="var(--good)"/><text x="150" y="295" text-anchor="middle" font-weight="650">Promoted</text>
+              <path d="M210 80h40v170" stroke="var(--warn-line)" stroke-width="1.6" fill="none" stroke-dasharray="4 3"/>
+              <path d="M210 132h40M210 184h40M210 236h40" stroke="var(--warn-line)" stroke-width="1.6" stroke-dasharray="4 3"/>
+              <text x="262" y="160" font-size="11.5" class="muted-t" transform="rotate(90 262 160)" text-anchor="middle">any failed gate blocks the release</text>
+            </g>
+          </svg>
+        </div>
+        <p class="small" style="margin:6px 0 0"><b>Any failed gate blocks the release.</b></p>
+      </div>
+    </div>
+
+    <div class="grid g2" style="margin-top:22px">
+      <div class="note" style="margin:0"><b>Accepted cost.</b> The grounding check in (L4) adds response time and may refuse some correctly paraphrased questions, and the second approval in (L1) delays urgent date changes, a delay the design accepts in order not to publish a wrong deadline again.</div>
+      <div class="note warn" style="margin:0"><b>Residual risk.</b> An insider with approval rights could still publish a false document. The two-person rule for date announcements and the audit log are the main controls for that case.</div>
+    </div>
+  </div>
+</section>
+
+<!-- 10. CONCLUSION -->
+<section id="conclusion" aria-labelledby="concl-h">
+  <div class="wrap">
+    <span class="eyebrow">Sections IX–X</span>
+    <h2 id="concl-h">Conclusion and limitations</h2>
+
+    <div class="grid g2" style="align-items:start">
+      <div>
+        <h3>The review supports three conclusions</h3>
+        <ol class="concl">
+          <li><span>RAG security is mainly a <b>system-design problem</b> rather than a model problem: in each incident in Section V, a control at retrieval, ingestion or output could have prevented the harm or limited its impact.</span></li>
+          <li><span>The <b>attack points interact</b>, so controls should be chosen to break chains such as injection, retrieval of a secret and exfiltration.</span></li>
+          <li><span>The defenses with the strongest published results, such as spotlighting <a class="ref" href="#ref-8">[8]</a>, are <b>probabilistic</b> and were measured on specific models and datasets, so they reduce rather than remove risk; adaptive attacks have already bypassed them <a class="ref" href="#ref-18">[18]</a>.</span></li>
+        </ol>
+        <div class="card" style="margin-top:22px">
+          <h3>In short</h3>
+          <p class="small">Research demonstrates all six risks; six incidents from 2024–2025 show three of them in deployed systems, often in combination; and the standards and frameworks (OWASP, NIST, MITRE ATLAS) now name them explicitly. They are mitigated by layered controls along the pipeline: governed ingestion, permission-aware retrieval, separation of instructions from data, grounding and output validation, least privilege, and continuous red teaming.</p>
+          <p class="small" style="margin:0"><b>No single layer is sufficient on its own.</b> Future work will measure these controls on the prototype with red-team tests and RAGAS metrics.</p>
+        </div>
+      </div>
+      <div>
+        <h3>Limitations</h3>
+        <ul class="lim card">
+          <li><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M10 2L1.5 17h17z" stroke-linejoin="round"/><path d="M10 8v4M10 14.5v.5" stroke-linecap="round"/></svg><span class="small">The field is young: most research dates from 2023–2026, and several key results, such as the adaptive-attack study <a class="ref" href="#ref-18">[18]</a>, appeared first as preprints and reached peer-reviewed venues only in 2025–2026.</span></li>
+          <li><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M10 2L1.5 17h17z" stroke-linejoin="round"/><path d="M10 8v4M10 14.5v.5" stroke-linecap="round"/></svg><span class="small">Vendor documentation describes features rather than measured effectiveness.</span></li>
+          <li><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M10 2L1.5 17h17z" stroke-linejoin="round"/><path d="M10 8v4M10 14.5v.5" stroke-linecap="round"/></svg><span class="small">Incident reports depend on what researchers and companies chose to disclose.</span></li>
+          <li><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M10 2L1.5 17h17z" stroke-linejoin="round"/><path d="M10 8v4M10 14.5v.5" stroke-linecap="round"/></svg><span class="small">The review is limited to English-language sources.</span></li>
+          <li><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M10 2L1.5 17h17z" stroke-linejoin="round"/><path d="M10 8v4M10 14.5v.5" stroke-linecap="round"/></svg><span class="small">It includes no experiments of its own, so the mitigation model is a synthesis that still needs validation, for example by testing the ADA assistant prototype against the attacks in Table II.</span></li>
+          <li><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M10 2L1.5 17h17z" stroke-linejoin="round"/><path d="M10 8v4M10 14.5v.5" stroke-linecap="round"/></svg><span class="small">The selection was purposive rather than systematic: result counts per query were not recorded and no independent double screening was used, so the review is not exhaustive and complements surveys that follow a full screening protocol <a class="ref" href="#ref-6">[6]</a> (Section III).</span></li>
+        </ul>
+
+        <div class="card" style="margin-top:18px">
+          <h3>Sources reviewed by class (Table I)</h3>
+          <div class="chart" id="chart-sources" role="img" aria-label="Bar chart, number of sources by class: Standards, frameworks and regulation 5; Peer-reviewed and preprint research 13; Incident reports and rulings 6; Market and vendor documentation 8; Course project 1."></div>
+          <p class="small muted" style="margin:8px 0 0">Included sources addressed the security, privacy or reliability of LLM applications that retrieve external content, were published between 2020 and 2026, and could be checked at a stable public location. For incidents only primary sources were used.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 11. REFERENCES -->
+<section id="references" aria-labelledby="refs-h">
+  <div class="wrap">
+    <span class="eyebrow">Bibliography</span>
+    <h2 id="refs-h">References</h2>
+    <ol class="refs">
+      <li id="ref-1"><span class="n">[1]</span><span>P. Lewis et al., “Retrieval-augmented generation for knowledge-intensive NLP tasks,” in Adv. Neural Inf. Process. Syst. (NeurIPS), vol. 33, 2020, pp. 9459–9474.</span></li>
+      <li id="ref-2"><span class="n">[2]</span><span>Menlo Ventures, “2024: The state of generative AI in the enterprise,” Nov. 20, 2024. Accessed: Nov. 18, 2026. [Online]. Available: <a href="https://menlovc.com/2024-the-state-of-generative-ai-in-the-enterprise/" rel="noopener">https://menlovc.com/2024-the-state-of-generative-ai-in-the-enterprise/</a></span></li>
+      <li id="ref-3"><span class="n">[3]</span><span>OWASP GenAI Security Project, “OWASP Top 10 for LLM applications 2025,” OWASP Foundation, Nov. 2024. Accessed: Nov. 18, 2026. [Online]. Available: <a href="https://genai.owasp.org/llm-top-10/" rel="noopener">https://genai.owasp.org/llm-top-10/</a></span></li>
+      <li id="ref-4"><span class="n">[4]</span><span>A. Vassilev, A. Oprea, A. Fordyce, H. Anderson, X. Davies, and M. Hamin, “Adversarial machine learning: A taxonomy and terminology of attacks and mitigations,” NIST, Gaithersburg, MD, USA, NIST AI 100-2e2025, Mar. 2025, doi: <a href="https://doi.org/10.6028/NIST.AI.100-2e2025" rel="noopener">10.6028/NIST.AI.100-2e2025</a>.</span></li>
+      <li id="ref-5"><span class="n">[5]</span><span>A. Alasgarov, M. Aghazada, and M. Gulmammadov, “SAD final report, Team 03, Chapters 0–4: ADA AI Assistant,” unpublished team report, IS 307 Systems Analysis and Design, Baku Higher Oil School, Baku, Azerbaijan, Oct. 2026.</span></li>
+      <li id="ref-6"><span class="n">[6]</span><span>Y. Xu et al., “Securing retrieval-augmented generation: A taxonomy of attacks, defenses, and future directions,” arXiv:2604.08304v1, Apr. 2026. [Online]. Available: <a href="https://arxiv.org/abs/2604.08304v1" rel="noopener">https://arxiv.org/abs/2604.08304v1</a></span></li>
+      <li id="ref-7"><span class="n">[7]</span><span>S. Zeng et al., “The good and the bad: Exploring privacy issues in retrieval-augmented generation (RAG),” in Findings Assoc. Comput. Linguistics: ACL 2024, Bangkok, Thailand, 2024, pp. 4505–4524, doi: <a href="https://doi.org/10.18653/v1/2024.findings-acl.267" rel="noopener">10.18653/v1/2024.findings-acl.267</a>.</span></li>
+      <li id="ref-8"><span class="n">[8]</span><span>K. Hines, G. Lopez, M. Hall, F. Zarfati, Y. Zunger, and E. Kıcıman, “Defending against indirect prompt injection attacks with spotlighting,” in Proc. Conf. Appl. Mach. Learn. Inf. Secur. (CAMLIS), Arlington, VA, USA, Oct. 2024, CEUR Workshop Proc., vol. 3920. [Online]. Available: <a href="https://ceur-ws.org/Vol-3920/paper03.pdf" rel="noopener">https://ceur-ws.org/Vol-3920/paper03.pdf</a></span></li>
+      <li id="ref-9"><span class="n">[9]</span><span>K. Greshake, S. Abdelnabi, S. Mishra, C. Endres, T. Holz, and M. Fritz, “Not what you’ve signed up for: Compromising real-world LLM-integrated applications with indirect prompt injection,” in Proc. 16th ACM Workshop Artif. Intell. Secur. (AISec), Copenhagen, Denmark, 2023, pp. 79–90, doi: <a href="https://doi.org/10.1145/3605764.3623985" rel="noopener">10.1145/3605764.3623985</a>.</span></li>
+      <li id="ref-10"><span class="n">[10]</span><span>National Institute of Standards and Technology, “Artificial intelligence risk management framework: Generative artificial intelligence profile,” NIST, Gaithersburg, MD, USA, NIST AI 600-1, Jul. 2024, doi: <a href="https://doi.org/10.6028/NIST.AI.600-1" rel="noopener">10.6028/NIST.AI.600-1</a>.</span></li>
+      <li id="ref-11"><span class="n">[11]</span><span>The MITRE Corporation, “RAG poisoning (AML.T0070)” and “False RAG entry injection (AML.T0071),” MITRE ATLAS. Accessed: Nov. 18, 2026. [Online]. Available: <a href="https://atlas.mitre.org/techniques/AML.T0070" rel="noopener">https://atlas.mitre.org/techniques/AML.T0070</a> and <a href="https://atlas.mitre.org/techniques/AML.T0071" rel="noopener">https://atlas.mitre.org/techniques/AML.T0071</a></span></li>
+      <li id="ref-12"><span class="n">[12]</span><span>OWASP GenAI Security Project, “GenAI red teaming guide: A practical approach to evaluating AI vulnerabilities,” v1.0, OWASP Foundation, Jan. 2025. Accessed: Nov. 18, 2026. [Online]. Available: <a href="https://genai.owasp.org/resource/genai-red-teaming-guide/" rel="noopener">https://genai.owasp.org/resource/genai-red-teaming-guide/</a></span></li>
+      <li id="ref-13"><span class="n">[13]</span><span>W. Zou, R. Geng, B. Wang, and J. Jia, “PoisonedRAG: Knowledge corruption attacks to retrieval-augmented generation of large language models,” in Proc. 34th USENIX Secur. Symp., Seattle, WA, USA, 2025, pp. 3827–3844. [Online]. Available: <a href="https://www.usenix.org/conference/usenixsecurity25/presentation/zou-poisonedrag" rel="noopener">https://www.usenix.org/conference/usenixsecurity25/presentation/zou-poisonedrag</a></span></li>
+      <li id="ref-14"><span class="n">[14]</span><span>J. X. Morris, V. Kuleshov, V. Shmatikov, and A. M. Rush, “Text embeddings reveal (almost) as much as text,” in Proc. 2023 Conf. Empirical Methods Natural Lang. Process. (EMNLP), Singapore, 2023, pp. 12448–12460, doi: <a href="https://doi.org/10.18653/v1/2023.emnlp-main.765" rel="noopener">10.18653/v1/2023.emnlp-main.765</a>.</span></li>
+      <li id="ref-15"><span class="n">[15]</span><span>S. Es, J. James, L. Espinosa-Anke, and S. Schockaert, “RAGAs: Automated evaluation of retrieval augmented generation,” in Proc. 18th Conf. Eur. Chapter Assoc. Comput. Linguistics: Syst. Demonstrations (EACL), St. Julian’s, Malta, 2024, pp. 150–158, doi: <a href="https://doi.org/10.18653/v1/2024.eacl-demo.16" rel="noopener">10.18653/v1/2024.eacl-demo.16</a>.</span></li>
+      <li id="ref-16"><span class="n">[16]</span><span>H. Zhong, M. Lentz, N. Narodytska, A. Szekeres, and K. Rong, “HoneyBee: Efficient role-based access control for vector databases via dynamic partitioning,” Proc. ACM Manag. Data, vol. 4, no. 1, Art. no. 11, Feb. 2026, doi: <a href="https://doi.org/10.1145/3786625" rel="noopener">10.1145/3786625</a>.</span></li>
+      <li id="ref-17"><span class="n">[17]</span><span>P. Reddy and A. S. Gujral, “EchoLeak: The first real-world zero-click prompt injection exploit in a production LLM system,” in Proc. AAAI Symp. Ser., vol. 7, no. 1, 2025, pp. 303–311, doi: <a href="https://doi.org/10.1609/aaaiss.v7i1.36899" rel="noopener">10.1609/aaaiss.v7i1.36899</a>.</span></li>
+      <li id="ref-18"><span class="n">[18]</span><span>M. Nasr et al., “The attacker moves second: Stronger adaptive attacks bypass defenses against LLM jailbreaks and prompt injections,” in Proc. 35th USENIX Secur. Symp., 2026. [Online]. Available: <a href="https://www.usenix.org/conference/usenixsecurity26/presentation/nasr" rel="noopener">https://www.usenix.org/conference/usenixsecurity26/presentation/nasr</a></span></li>
+      <li id="ref-19"><span class="n">[19]</span><span>Z. Chen, Z. Xiang, C. Xiao, D. Song, and B. Li, “AgentPoison: Red-teaming LLM agents via poisoning memory or knowledge bases,” in Adv. Neural Inf. Process. Syst. (NeurIPS), vol. 37, Vancouver, Canada, 2024, doi: <a href="https://doi.org/10.52202/079017-4136" rel="noopener">10.52202/079017-4136</a>.</span></li>
+      <li id="ref-20"><span class="n">[20]</span><span>M. Anderson, G. Amit, and A. Goldsteen, “Is my data in your retrieval database? Membership inference attacks against retrieval augmented generation,” in Proc. 11th Int. Conf. Inf. Syst. Secur. Privacy (ICISSP), vol. 2, 2025, pp. 474–485, doi: <a href="https://doi.org/10.5220/0013108300003899" rel="noopener">10.5220/0013108300003899</a>.</span></li>
+      <li id="ref-21"><span class="n">[21]</span><span>PromptArmor, “Data exfiltration from Slack AI via indirect prompt injection,” Aug. 20, 2024. Accessed: Nov. 18, 2026. [Online]. Available: <a href="https://promptarmor.substack.com/p/data-exfiltration-from-slack-ai-via" rel="noopener">https://promptarmor.substack.com/p/data-exfiltration-from-slack-ai-via</a></span></li>
+      <li id="ref-22"><span class="n">[22]</span><span>Moffatt v. Air Canada, 2024 BCCRT 149, British Columbia Civil Resolution Tribunal, Feb. 14, 2024. Accessed: Nov. 18, 2026. [Online]. Available: <a href="https://www.canlii.org/en/bc/bccrt/doc/2024/2024bccrt149/2024bccrt149.html" rel="noopener">https://www.canlii.org/en/bc/bccrt/doc/2024/2024bccrt149/2024bccrt149.html</a></span></li>
+      <li id="ref-23"><span class="n">[23]</span><span>C. Lecher, “NYC’s AI chatbot tells businesses to break the law,” The Markup, Mar. 29, 2024. Accessed: Nov. 18, 2026. [Online]. Available: <a href="https://themarkup.org/news/2024/03/29/nycs-ai-chatbot-tells-businesses-to-break-the-law" rel="noopener">https://themarkup.org/news/2024/03/29/nycs-ai-chatbot-tells-businesses-to-break-the-law</a></span></li>
+      <li id="ref-24"><span class="n">[24]</span><span>Microsoft Security Response Center, “CVE-2025-32711: M365 Copilot information disclosure vulnerability,” Jun. 11, 2025. Accessed: Nov. 18, 2026. [Online]. Available: <a href="https://msrc.microsoft.com/update-guide/vulnerability/CVE-2025-32711" rel="noopener">https://msrc.microsoft.com/update-guide/vulnerability/CVE-2025-32711</a></span></li>
+      <li id="ref-25"><span class="n">[25]</span><span>S. Levi, “ForcedLeak: AI agent risks exposed in Salesforce AgentForce,” Noma Security, Sep. 25, 2025. Accessed: Nov. 18, 2026. [Online]. Available: <a href="https://noma.security/blog/forcedleak-agent-risks-exposed-in-salesforce-agentforce" rel="noopener">https://noma.security/blog/forcedleak-agent-risks-exposed-in-salesforce-agentforce</a></span></li>
+      <li id="ref-26"><span class="n">[26]</span><span>O. Mayraz, “CamoLeak: Critical GitHub Copilot vulnerability leaks private source code,” Legit Security, Sep. 30, 2025. Accessed: Nov. 18, 2026. [Online]. Available: <a href="https://legitsecurity.com/blog/camoleak-critical-github-copilot-vulnerability-leaks-private-source-code" rel="noopener">https://legitsecurity.com/blog/camoleak-critical-github-copilot-vulnerability-leaks-private-source-code</a></span></li>
+      <li id="ref-27"><span class="n">[27]</span><span>K. M. Scheurenbrand, “US companies increase AI spending sixfold in one year, study finds,” The Decoder, Nov. 29, 2024. Accessed: Nov. 18, 2026. [Online]. Available: <a href="https://the-decoder.com/us-companies-increase-ai-spending-sixfold-in-one-year-study-finds/" rel="noopener">https://the-decoder.com/us-companies-increase-ai-spending-sixfold-in-one-year-study-finds/</a></span></li>
+      <li id="ref-28"><span class="n">[28]</span><span>Microsoft, “Document-level access control in Azure AI Search,” Microsoft Learn, 2026. Accessed: Nov. 18, 2026. [Online]. Available: <a href="https://learn.microsoft.com/en-us/azure/search/search-document-level-access-overview" rel="noopener">https://learn.microsoft.com/en-us/azure/search/search-document-level-access-overview</a></span></li>
+      <li id="ref-29"><span class="n">[29]</span><span>Microsoft, “Security filters for trimming results in Azure AI Search,” Microsoft Learn, 2026. Accessed: Nov. 18, 2026. [Online]. Available: <a href="https://learn.microsoft.com/en-us/azure/search/search-security-trimming-for-azure-search" rel="noopener">https://learn.microsoft.com/en-us/azure/search/search-security-trimming-for-azure-search</a></span></li>
+      <li id="ref-30"><span class="n">[30]</span><span>Amazon Web Services, “Guardrails for Amazon Bedrock can now detect hallucinations and safeguard apps using any FM,” Jul. 10, 2024. Accessed: Nov. 18, 2026. [Online]. Available: <a href="https://aws.amazon.com/about-aws/whats-new/2024/07/guardrails-bedrock-hallucinations-safeguard-apps-fm" rel="noopener">https://aws.amazon.com/about-aws/whats-new/2024/07/guardrails-bedrock-hallucinations-safeguard-apps-fm</a></span></li>
+      <li id="ref-31"><span class="n">[31]</span><span>Microsoft, “Prompt Shields,” Azure AI Content Safety, Microsoft Learn. Accessed: Nov. 18, 2026. [Online]. Available: <a href="https://learn.microsoft.com/en-us/azure/ai-services/content-safety/concepts/jailbreak-detection" rel="noopener">https://learn.microsoft.com/en-us/azure/ai-services/content-safety/concepts/jailbreak-detection</a></span></li>
+      <li id="ref-32"><span class="n">[32]</span><span>Amazon Web Services, “Create your guardrail,” Amazon Bedrock User Guide. Accessed: Nov. 18, 2026. [Online]. Available: <a href="https://docs.aws.amazon.com/bedrock/latest/userguide/guardrails-components.html" rel="noopener">https://docs.aws.amazon.com/bedrock/latest/userguide/guardrails-components.html</a></span></li>
+      <li id="ref-33"><span class="n">[33]</span><span>Pinecone Systems, “Security overview,” Pinecone Documentation. Accessed: Nov. 18, 2026. [Online]. Available: <a href="https://docs.pinecone.io/guides/production/security-overview" rel="noopener">https://docs.pinecone.io/guides/production/security-overview</a></span></li>
+    </ol>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <p style="margin:0">Website presenting the paper “Security Risks of Retrieval-Augmented Generation Systems and Their Mitigation: A Literature and Market Review” by Amil Alasgarov, Murad Aghazada and Mahammad Gulmammadov, Baku Higher Oil School. All figures, labels and claims are taken from the paper.</p>
+  </div>
+</footer>
+
+<script>
+(function(){
+  "use strict";
+  var NS = "http://www.w3.org/2000/svg";
+  function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+
+  /* ---------- theme ---------- */
+  var root = document.documentElement, btn = document.getElementById("themeBtn"), lbl = document.getElementById("themeLbl");
+  function stored(){try{return localStorage.getItem("theme");}catch(e){return null;}}
+  function isDark(){var t=root.getAttribute("data-theme"); if(t) return t==="dark"; return window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches;}
+  function syncBtn(){var d=isDark(); lbl.textContent=d?"Light":"Dark"; btn.setAttribute("aria-label",d?"Switch to light mode":"Switch to dark mode");}
+  var s = stored(); if(s==="dark"||s==="light") root.setAttribute("data-theme", s);
+  syncBtn();
+  btn.addEventListener("click",function(){var n=isDark()?"light":"dark"; root.setAttribute("data-theme",n); try{localStorage.setItem("theme",n);}catch(e){} syncBtn();});
+  if(window.matchMedia){var mq=matchMedia("(prefers-color-scheme: dark)"); if(mq.addEventListener) mq.addEventListener("change",syncBtn);}
+
+  /* ---------- nav highlight ---------- */
+  var links = Array.prototype.slice.call(document.querySelectorAll("nav.sections a"));
+  if("IntersectionObserver" in window){
+    var map = {}; links.forEach(function(a){map[a.getAttribute("href").slice(1)]=a;});
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if(e.isIntersecting && map[e.target.id]){
+          links.forEach(function(a){a.classList.remove("active"); a.removeAttribute("aria-current");});
+          var a = map[e.target.id]; a.classList.add("active"); a.setAttribute("aria-current","true");
+          var nav = a.closest("nav"); var l = a.offsetLeft - nav.clientWidth/2 + a.clientWidth/2; nav.scrollLeft = l;
+        }
+      });
+    },{rootMargin:"-45% 0px -50% 0px"});
+    Object.keys(map).forEach(function(id){var el=document.getElementById(id); if(el) io.observe(el);});
+  }
+
+  /* ---------- attack point data (Table II + Section IV) ---------- */
+  var AP = {
+    A1:{name:"Knowledge-base poisoning", stage:"Ingestion", node:"ing", cls:"research",
+      what:"The attacker adds crafted texts to the knowledge database so that, for an attacker-chosen question, the texts are retrieved and lead the LLM to an attacker-chosen answer.",
+      ev:'5 texts per target question gave about 90% attack success <a class="ref" href="#ref-13">[13]</a>', fw:"LLM04, LLM08; AML.T0070, T0071"},
+    A2:{name:"Embedding exposure", stage:"Vector store", node:"vs", cls:"research",
+      what:"Leaked embeddings, or an over-permissive vector search interface, can expose source text or sensitive details under certain conditions.",
+      ev:'92% of 32-token texts rebuilt exactly from embeddings <a class="ref" href="#ref-14">[14]</a>', fw:"LLM08"},
+    A3:{name:"Retrieval without access control", stage:"Retrieval", node:"ret", cls:"research",
+      what:"If retrieval ranks by similarity alone, any user’s question can pull in a chunk that the user could not open in the source system.",
+      ev:'Retrieval data extracted <a class="ref" href="#ref-7">[7]</a>; membership inference <a class="ref" href="#ref-20">[20]</a>', fw:"LLM02, LLM08"},
+    A4:{name:"Indirect prompt injection", stage:"Prompt assembly", node:"pa", cls:"deployed",
+      what:"The attacker places instructions in content that the application is likely to retrieve, such as a web page, an e-mail or a shared document; retrieval delivers the payload.",
+      ev:'Attacks on Bing Chat and code completion <a class="ref" href="#ref-9">[9]</a>', fw:"LLM01; NIST AI 100-2"},
+    A5:{name:"Confabulation", stage:"LLM generation", node:"llm", cls:"deployed",
+      what:"The model can misread a passage, merge two passages, or answer although no relevant passage exists.",
+      ev:'Air Canada <a class="ref" href="#ref-22">[22]</a>; NYC MyCity <a class="ref" href="#ref-23">[23]</a>', fw:"LLM09; NIST AI 600-1"},
+    A6:{name:"Exfiltration via output", stage:"Output rendering", node:"out", cls:"deployed",
+      what:"If the model outputs a link or an image whose URL contains retrieved data, the client sends that data to the attacker when it loads the image or the user clicks the link.",
+      ev:'EchoLeak, CVSS 9.3 <a class="ref" href="#ref-17">[17]</a>, <a class="ref" href="#ref-24">[24]</a>; ForcedLeak, CamoLeak <a class="ref" href="#ref-25">[25]</a>, <a class="ref" href="#ref-26">[26]</a>', fw:"LLM01, LLM05"}
+  };
+
+  /* ---------- pipeline diagram (Fig. 1) ---------- */
+  var pipeHost = document.getElementById("pipeline");
+  var pinned = null, layoutMode = null;
+
+  function node(id, cls, x, y, w, h, lines, fs){
+    var out = '<g class="node '+cls+'" data-node="'+id+'"><rect x="'+x+'" y="'+y+'" width="'+w+'" height="'+h+'" rx="10"/>';
+    var lh = fs*1.25, cy = y + h/2 - (lines.length-1)*lh/2 + fs*0.35;
+    lines.forEach(function(t,i){ out += '<text x="'+(x+w/2)+'" y="'+(cy+i*lh)+'" text-anchor="middle" font-size="'+fs+'">'+esc(t)+'</text>'; });
+    return out + '</g>';
+  }
+  function marker(p, x, y){
+    return '<g class="marker" data-p="'+p+'" tabindex="0" role="button" aria-label="'+p+': '+esc(AP[p].name)+'">'+
+      '<circle class="halo" cx="'+x+'" cy="'+y+'" r="20"/><circle class="m" cx="'+x+'" cy="'+y+'" r="15"/>'+
+      '<text x="'+x+'" y="'+(y+5)+'" text-anchor="middle">'+p+'</text></g>';
+  }
+  function buildPipeline(){
+    var narrow = pipeHost.clientWidth < 500;
+    var mode = narrow ? "n" : "w";
+    if(mode === layoutMode) return; layoutMode = mode;
+    var s = "";
+    var defs = '<defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="var(--text)"/></marker></defs>';
+    if(!narrow){
+      var W=700,H=470,bw=150,bh=74,y1=62,y2=236;
+      s += '<svg viewBox="0 0 '+W+' '+H+'" aria-hidden="false" focusable="false">'+defs;
+      s += '<text x="20" y="26" font-size="17" font-style="italic">Indexing (offline)</text>';
+      s += '<text x="172" y="52" font-size="13" text-anchor="end" class="muted-t">trust boundary</text>';
+      s += '<text x="20" y="214" font-size="17" font-style="italic">Answering</text>';
+      s += '<path class="tb" d="M180 58V340"/>';
+      s += node("ds","idx",20,y1,bw-10,bh,["Document","sources"],15);
+      s += node("ing","idx",190,y1,bw,bh,["Ingestion &","validation"],15);
+      s += node("chk","idx",360,y1,bw,bh,["Chunking &","embedding"],15);
+      s += node("vs","idx",530,y1,bw,bh,["Vector store","(+ metadata)"],15);
+      s += node("uq","ans",20,y2,bw-10,bh,["User query","(identity)"],15);
+      s += node("ret","ans",190,y2,bw,bh,["Retrieval","(top-k, filter)"],15);
+      s += node("pa","ans",360,y2,bw,bh,["Prompt","assembly"],15);
+      s += node("llm","ans",530,y2,bw,bh,["LLM","generation"],15);
+      s += node("out","ans",360,376,320,bh,["Output rendering","(text, links, images)"],15);
+      var e = function(d){return '<path class="edge" d="'+d+'" marker-end="url(#arr)"/>';};
+      s += e("M160 99H188")+e("M340 99H358")+e("M510 99H528");
+      s += e("M600 136L268 234");
+      s += e("M160 273H188")+e("M340 273H358")+e("M510 273H528");
+      s += e("M605 310V374");
+      s += marker("A1",190,y1)+marker("A2",680,y1)+marker("A3",190,y2)+marker("A4",360,y2)+marker("A5",680,y2)+marker("A6",680,376);
+      s += '</svg>';
+    } else {
+      var Wn=340, x=50, w=230, h=58, fs=15;
+      var Y={ds:40,ing:128,chk:212,vs:296,uq:420,ret:508,pa:592,llm:676,out:760};
+      s += '<svg viewBox="0 0 '+Wn+' 836" focusable="false" style="max-width:440px;margin:0 auto">'+defs;
+      s += '<text x="12" y="24" font-size="17" font-style="italic">Indexing (offline)</text>';
+      s += '<text x="12" y="404" font-size="17" font-style="italic">Answering</text>';
+      s += '<path class="tb" d="M8 113H332"/><text x="314" y="107" font-size="12.5" text-anchor="end" class="muted-t">trust boundary</text>';
+      s += '<path class="tb" d="M8 493H332"/><text x="314" y="487" font-size="12.5" text-anchor="end" class="muted-t">trust boundary</text>';
+      s += node("ds","idx",x,Y.ds,w,h,["Document sources"],fs);
+      s += node("ing","idx",x,Y.ing,w,h,["Ingestion & validation"],fs);
+      s += node("chk","idx",x,Y.chk,w,h,["Chunking & embedding"],fs);
+      s += node("vs","idx",x,Y.vs,w,h,["Vector store","(+ metadata)"],fs);
+      s += node("uq","ans",x,Y.uq,w,h,["User query (identity)"],fs);
+      s += node("ret","ans",x,Y.ret,w,h,["Retrieval","(top-k, filter)"],fs);
+      s += node("pa","ans",x,Y.pa,w,h,["Prompt assembly"],fs);
+      s += node("llm","ans",x,Y.llm,w,h,["LLM generation"],fs);
+      s += node("out","ans",x,Y.out,w,h,["Output rendering","(text, links, images)"],fs);
+      var en = function(d){return '<path class="edge" d="'+d+'" marker-end="url(#arr)"/>';};
+      var cx = x + w/2;
+      [["ds","ing"],["ing","chk"],["chk","vs"],["uq","ret"],["ret","pa"],["pa","llm"],["llm","out"]].forEach(function(p){ en; s += en("M"+cx+" "+(Y[p[0]]+h)+"V"+(Y[p[1]]-2)); });
+      s += '<path class="edge" d="M'+(x+w)+' '+(Y.vs+h/2)+'H322V'+(Y.ret+h/2)+'H'+(x+w+2)+'" marker-end="url(#arr)"/>';
+      s += marker("A1",x,Y.ing)+marker("A2",x+w,Y.vs)+marker("A3",x,Y.ret)+marker("A4",x,Y.pa)+marker("A5",x+w,Y.llm)+marker("A6",x+w,Y.out);
+      s += '</svg>';
+    }
+    pipeHost.innerHTML = s;
+    bindMarkers();
+    if(pinned) highlight(pinned);
+  }
+
+  var info = document.getElementById("apInfo");
+  var apBtns = Array.prototype.slice.call(document.querySelectorAll(".ap-buttons button"));
+  function show(p){
+    var d = AP[p];
+    info.innerHTML = '<h3><span class="ap">'+p+'</span> '+esc(d.name)+'</h3>'+
+      '<span class="badge '+d.cls+'">'+(d.cls==="deployed"?"Seen in deployed incidents":"Shown in research")+'</span>'+
+      '<dl><div><dt>Pipeline stage</dt><dd>'+esc(d.stage)+'</dd></div>'+
+      '<div><dt>What it means</dt><dd>'+esc(d.what)+'</dd></div>'+
+      '<div><dt>Key evidence (Table II)</dt><dd>'+d.ev+'</dd></div>'+
+      '<div><dt>Frameworks</dt><dd>'+esc(d.fw)+'</dd></div></dl>';
+    highlight(p);
+  }
+  function highlight(p){
+    pipeHost.querySelectorAll(".marker").forEach(function(m){m.classList.toggle("on", m.getAttribute("data-p")===p); m.setAttribute("aria-pressed", m.getAttribute("data-p")===p?"true":"false");});
+    pipeHost.querySelectorAll(".node").forEach(function(n){n.classList.toggle("hl", AP[p] && n.getAttribute("data-node")===AP[p].node);});
+    apBtns.forEach(function(b){b.setAttribute("aria-pressed", b.getAttribute("data-p")===p?"true":"false");});
+  }
+  function pin(p){ pinned = p; show(p); }
+  function bindMarkers(){
+    pipeHost.querySelectorAll(".marker").forEach(function(m){
+      var p = m.getAttribute("data-p");
+      m.addEventListener("mouseenter", function(){ show(p); });
+      m.addEventListener("mouseleave", function(){ if(pinned) show(pinned); });
+      m.addEventListener("click", function(){ pin(p); });
+      m.addEventListener("focus", function(){ show(p); });
+      m.addEventListener("keydown", function(ev){ if(ev.key==="Enter"||ev.key===" "){ ev.preventDefault(); pin(p);} });
+    });
+  }
+  apBtns.forEach(function(b){ b.addEventListener("click", function(){ pin(b.getAttribute("data-p")); }); });
+
+  /* ---------- generic horizontal bar chart ---------- */
+  /* rows: {label, sub, value, from, to, valueLabel, cls, ghostTo, ghostLabel, openEnd:"right"|"left"} */
+  function hbar(id, cfg){
+    var host = document.getElementById(id); if(!host) return;
+    var W = Math.max(260, Math.round(host.clientWidth));
+    var narrow = W < (cfg.wideMin || 560);
+    var labelW = narrow ? 0 : (cfg.labelW || 220);
+    var valW = narrow ? 0 : (cfg.valW || 90);
+    var padL = narrow ? 8 : labelW + 12, padR = narrow ? 18 : valW + 10;
+    var barH = cfg.barH || 18, rowGap = narrow ? 58 : (cfg.rowH || 46);
+    var top = 10, plotW = W - padL - padR;
+    var rows = cfg.rows, max = cfg.max;
+    var H = top + rows.length*rowGap + 56;
+    function X(v){ return padL + plotW * v / max; }
+    var s = '<svg viewBox="0 0 '+W+' '+H+'" width="'+W+'" height="'+H+'" aria-hidden="true" focusable="false">';
+    s += '<defs><pattern id="hatch-'+id+'" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" fill="var(--surface-2)"/><line x1="0" y1="0" x2="0" y2="6" stroke="var(--node-stroke)" stroke-width="2"/></pattern></defs>';
+    var plotBottom = top + rows.length*rowGap;
+    cfg.ticks.forEach(function(t){
+      s += '<line class="grid-l" x1="'+X(t)+'" x2="'+X(t)+'" y1="'+top+'" y2="'+plotBottom+'"/>';
+      s += '<text class="tick" x="'+X(t)+'" y="'+(plotBottom+18)+'" text-anchor="middle">'+t+(cfg.tickUnit||"")+'</text>';
+    });
+    s += '<line class="axis-l" x1="'+padL+'" x2="'+padL+'" y1="'+top+'" y2="'+plotBottom+'"/>';
+    s += '<line class="axis-l" x1="'+padL+'" x2="'+(padL+plotW)+'" y1="'+plotBottom+'" y2="'+plotBottom+'"/>';
+    s += '<text class="axis-title" x="'+(padL+plotW/2)+'" y="'+(plotBottom+42)+'" text-anchor="middle">'+esc(cfg.axisTitle)+'</text>';
+    rows.forEach(function(r,i){
+      var y0 = top + i*rowGap;
+      var by = narrow ? y0 + 26 : y0 + (rowGap-barH)/2;
+      if(narrow){
+        s += '<text class="row-l" x="'+(padL+4)+'" y="'+(y0+17)+'">'+esc(r.label)+' <tspan class="val" style="fill:var(--text)">· '+esc(r.valueLabel)+'</tspan></text>';
+      } else {
+        var ly = by + barH/2 + 5 - (r.sub?8:0);
+        s += '<text class="row-l" x="'+labelW+'" y="'+ly+'" text-anchor="end">'+esc(r.label)+'</text>';
+        if(r.sub) s += '<text class="tick" x="'+labelW+'" y="'+(ly+17)+'" text-anchor="end">'+esc(r.sub)+'</text>';
+        s += '<text class="val" x="'+(W-valW)+'" y="'+(by+barH/2+5)+'">'+esc(r.valueLabel)+'</text>';
+      }
+      if(r.ghostTo!=null){
+        s += '<rect x="'+padL+'" y="'+(by-5)+'" width="'+(X(r.ghostTo)-padL)+'" height="'+(barH+10)+'" rx="3" fill="url(#hatch-'+id+')" stroke="var(--node-stroke)" stroke-dasharray="4 3"/>';
+      }
+      var from = r.from!=null ? r.from : 0, to = r.to!=null ? r.to : r.value;
+      var x0 = X(from), x1 = Math.max(X(to), x0+5);
+      s += '<rect class="bar '+(r.cls||"")+'" x="'+x0+'" y="'+by+'" width="'+(x1-x0)+'" height="'+barH+'" rx="3"/>';
+      if(r.openEnd==="right"){
+        s += '<rect x="'+x1+'" y="'+by+'" width="'+(X(max)-x1)+'" height="'+barH+'" rx="3" fill="none" stroke="var(--warn-line)" stroke-width="1.5" stroke-dasharray="4 3"/>';
+      }
+      if(r.openEnd==="left-low"){
+        s += '<path d="M'+(x1+6)+' '+(by+3)+'l-5 '+(barH/2-3)+'l5 '+(barH/2-3)+'" stroke="var(--good)" stroke-width="2" fill="none"/>';
+      }
+    });
+    s += '</svg>';
+    host.innerHTML = s;
+  }
+
+  var charts = [
+    ["chart-defenses",{max:100,ticks:[0,25,50,75,100],tickUnit:"%",axisTitle:"Attack success rate (%)",labelW:250,valW:120,rowH:58,wideMin:600,rows:[
+      {label:"Query paraphrasing vs. poisoning",sub:"[13]",from:79,to:93,valueLabel:"79–93%"},
+      {label:"Retrieving 50 passages (k = 50)",sub:"HotpotQA [13]",from:41,to:43,valueLabel:"41–43%"},
+      {label:"Spotlighting, static attacks",sub:"hatched: above 50% before [8]",value:2,cls:"",ghostTo:50,openEnd:"left-low",valueLabel:"below 2%"},
+      {label:"Spotlighting, adaptive attacks",sub:"AgentDojo [18]",value:95,cls:"warn",openEnd:"right",valueLabel:"above 95%"}
+    ]}],
+    ["chart-adoption",{max:100,ticks:[0,25,50,75,100],tickUnit:"%",axisTitle:"Share of surveyed enterprises using RAG (%)",labelW:60,valW:50,rowH:44,wideMin:300,rows:[
+      {label:"2023",value:31,cls:"neutral",valueLabel:"31%"},
+      {label:"2024",value:51,valueLabel:"51%"}
+    ]}],
+    ["chart-share",{max:25,ticks:[0,5,10,15,20,25],tickUnit:"%",axisTitle:"Reported share (%)",labelW:80,valW:50,rowH:44,wideMin:300,rows:[
+      {label:"Pinecone",value:18,valueLabel:"18%"},
+      {label:"Postgres",value:15,cls:"neutral",valueLabel:"15%"}
+    ]}],
+    ["chart-cvss",{max:10,ticks:[0,2,4,6,8,10],axisTitle:"CVSS score (0–10)",labelW:90,valW:40,rowH:40,wideMin:300,rows:[
+      {label:"EchoLeak",value:9.3,cls:"warn",valueLabel:"9.3"},
+      {label:"ForcedLeak",value:9.4,cls:"warn",valueLabel:"9.4"},
+      {label:"CamoLeak",value:9.6,cls:"warn",valueLabel:"9.6"}
+    ]}],
+    ["chart-sources",{max:15,ticks:[0,5,10,15],axisTitle:"Number of sources",labelW:270,valW:30,rowH:42,wideMin:520,rows:[
+      {label:"Standards, frameworks and regulation",value:5,valueLabel:"5"},
+      {label:"Peer-reviewed and preprint research",value:13,valueLabel:"13"},
+      {label:"Incident reports and rulings",value:6,valueLabel:"6"},
+      {label:"Market and vendor documentation",value:8,valueLabel:"8"},
+      {label:"Course project",value:1,cls:"neutral",valueLabel:"1"}
+    ]}]
+  ];
+  function renderAll(){ buildPipeline(); charts.forEach(function(c){ hbar(c[0], c[1]); }); }
+  var rt; window.addEventListener("resize", function(){ clearTimeout(rt); rt = setTimeout(renderAll, 120); });
+  renderAll();
+})();
+</script>
+</body>
+</html>
