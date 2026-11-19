@@ -1,0 +1,12 @@
+{
+  "name": "sad-research",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Static single-page website presenting the RAG security review paper",
+  "scripts": {
+    "build": "echo \"Static site: no build step needed\"",
+    "test": "echo \"Static site: no tests\"",
+    "start": "node server.js"
+  },
+  "engines": { "node": ">=18" }
+}

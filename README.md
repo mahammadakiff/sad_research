@@ -6,6 +6,7 @@ Single-page website presenting the paper *"Security Risks of Retrieval-Augmented
 - Open `index.html` directly in a browser, or deploy as a static site.
 
 ## Deploy on Render
-1. New → **Static Site** → connect this repository.
-2. Build command: leave empty (or `echo ok`).
-3. Publish directory: `.`
+**Option A – Static Site (recommended):** Build command `npm run build` (or empty), Publish directory `.`
+
+**Option B – Web Service:** Build command `npm install` (or `npm run build`), Start command `npm start`.
+`server.js` is a tiny dependency-free Node server that serves `index.html` on `$PORT`.
